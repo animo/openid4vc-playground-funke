@@ -17,13 +17,12 @@ import { AGENT_HOST } from './constants'
 import { getIssuer } from './issuer'
 import { credentialSupportedIds } from './issuerMetadata'
 import { getX509Certificate } from './keyMethods'
-import type { OfferSessionMetadata } from './session'
 import { getVerifier } from './verifier'
 
 const zCreateOfferRequest = z.object({
   // FIXME: rename offeredCredentials to credentialSupportedIds in AFJ
   credentialSupportedIds: z.array(z.enum(credentialSupportedIds)),
-  issuerDidMethod: z.string(),
+  issuerId: z.string(),
 })
 
 export const apiRouter = express.Router()
@@ -39,19 +38,10 @@ apiRouter.post('/offers/create', async (request: Request, response: Response) =>
   const offer = await agent.modules.openId4VcIssuer.createCredentialOffer({
     issuerId: issuer.issuerId,
     offeredCredentials: createOfferRequest.credentialSupportedIds,
-    version: 'v1.draft13',
     preAuthorizedCodeFlowConfig: {
       userPinRequired: false,
     },
   })
-
-  // FIXME: in 0.5.1 we can pass the issuanceMetadata to the createCredentialOffer method
-  // directly
-  const issuanceSessionRepository = agent.dependencyManager.resolve(OpenId4VcIssuanceSessionRepository)
-  offer.issuanceSession.issuanceMetadata = {
-    issuerDidMethod: createOfferRequest.issuerDidMethod,
-  } satisfies OfferSessionMetadata
-  await issuanceSessionRepository.update(agent.context, offer.issuanceSession)
 
   return response.json(offer)
 })
@@ -105,29 +95,7 @@ apiRouter.post('/offers/receive', async (request: Request, response: Response) =
   })
 
   return response.json({
-    credentials: credentials.map((credential) => {
-      if (credential instanceof W3cJsonLdVerifiableCredential) {
-        return {
-          pretty: credential.toJson(),
-          encoded: credential.toJson(),
-        }
-      }
-
-      if (credential instanceof W3cJwtVerifiableCredential) {
-        return {
-          pretty: JsonTransformer.toJSON(credential.credential),
-          encoded: credential.serializedJwt,
-        }
-      }
-
-      return {
-        pretty: {
-          ...credential,
-          compact: undefined,
-        },
-        encoded: credential.credential,
-      }
-    }),
+    credentials: credentials.map((credential) => JSON.stringify(credential.credential.payload)),
   })
 })
 

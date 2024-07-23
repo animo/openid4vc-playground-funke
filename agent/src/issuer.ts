@@ -37,16 +37,11 @@ export async function updateIssuer() {
 }
 
 export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToCredentialMapper = async ({
-  issuanceSession,
   // FIXME: it would be useful if holderBinding would include some metadata on the key type / alg used
   // for the key binding
   holderBinding,
 }) => {
   const credentialSupported = credentialsSupported[0]
-
-  // not sure if this check is needed anymore
-  if (!issuanceSession) throw new Error('Issuance session not found')
-  if (!issuanceSession.issuanceMetadata) throw new Error('No issuance metadata')
 
   const x509Certificate = getX509Certificate()
 
@@ -100,25 +95,20 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
         issuer: AGENT_HOST,
       },
       disclosureFrame: {
-        given_name: true,
-        family_name: true,
-        birthdate: true,
-        source_document_type: true,
-        address: true,
-        nationalities: true,
-        gender: true,
-        birth_family_name: true,
-        place_of_birth: true,
-        also_known_as: true,
-        age_equal_or_over: {
-          '12': true,
-          '14': true,
-          '16': true,
-          '18': true,
-          '21': true,
-          '65': true,
-        },
-      } as any,
+        _sd: [
+          'given_name',
+          'family_name',
+          'birthdate',
+          'source_document_type',
+          'address',
+          'nationalities',
+          'gender',
+          'birth_family_name',
+          'place_of_birth',
+          'also_known_as',
+        ],
+        age_equal_or_over: { _sd: ['12', '14', '16', '18', '21', '65'] },
+      },
     }
   }
 

@@ -1,10 +1,8 @@
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { ExclamationTriangleIcon } from '@radix-ui/react-icons'
 import { type FormEvent, useEffect, useState } from 'react'
 import QRCode from 'react-qr-code'
 import { createOffer, getIssuer } from '../lib/api'
@@ -30,15 +28,15 @@ export function IssueTab() {
   }, [])
   async function onSubmitIssueCredential(e: FormEvent) {
     e.preventDefault()
-    const _issuerDidMethod = issuerId ?? issuer?.availableX509Certificates[0]
+    const _issuerId = issuerId ?? issuer?.availableX509Certificates[0]
     const _credentialType = credentialType ?? issuer?.credentialsSupported[0].id
-    if (!_issuerDidMethod || !_credentialType) {
+    if (!_issuerId || !_credentialType) {
       throw new Error('No issuer or credential type')
     }
 
     const offer = await createOffer({
       credentialSupportedId: _credentialType,
-      issuerDidMethod: _issuerDidMethod,
+      issuerId: _issuerId,
     })
     setCredentialOfferUri(offer.credentialOffer)
   }
@@ -113,18 +111,6 @@ export function IssueTab() {
           Issue Credential
         </Button>
       </form>
-      <Alert variant="warning" className="mt-5">
-        <ExclamationTriangleIcon className="h-4 w-4" />
-        <AlertTitle>Warning</AlertTitle>
-        <AlertDescription>
-          When using the{' '}
-          <a className="underline" href="https://linktr.ee/paradym_id">
-            Paradym Wallet
-          </a>
-          , only issuance of JWT credentials (not SD-JWT credentials) using a did method other than{' '}
-          <code>did:cheqd</code> is supported.
-        </AlertDescription>
-      </Alert>
     </Card>
   )
 }

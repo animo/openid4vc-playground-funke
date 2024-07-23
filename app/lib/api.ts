@@ -2,10 +2,10 @@ import { NEXT_PUBLIC_API_URL } from './constants'
 
 export async function createOffer({
   credentialSupportedId,
-  issuerDidMethod,
+  issuerId,
 }: {
   credentialSupportedId: string
-  issuerDidMethod: string
+  issuerId: string
 }) {
   const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/offers/create`, {
     method: 'POST',
@@ -14,7 +14,7 @@ export async function createOffer({
     },
     body: JSON.stringify({
       credentialSupportedIds: [credentialSupportedId],
-      issuerDidMethod,
+      issuerId,
     }),
   })
 
