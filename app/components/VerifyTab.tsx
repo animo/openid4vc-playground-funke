@@ -17,10 +17,7 @@ export function VerifyTab() {
 
   return (
     <>
-      <VerifyBlock
-        flowName="Verify"
-        createRequest={createRequestForVerification}
-      />
+      <VerifyBlock flowName="Verify" createRequest={createRequestForVerification} />
     </>
   )
 }
