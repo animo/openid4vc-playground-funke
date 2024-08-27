@@ -14,6 +14,9 @@ patchedDependencies:
   '@credo-ts/openid4vc@0.5.11-pr-1996-20240826150533':
     hash: xrveeqbstenzz7j7sdm555tz5m
     path: patches/@credo-ts__openid4vc@0.5.11-pr-1996-20240826150533.patch
+  '@sphereon/did-auth-siop@0.16.0':
+    hash: cibo2rshoykkrgp26yrdzmmrti
+    path: patches/@sphereon__did-auth-siop@0.16.0.patch
 
 importers:
 
@@ -7678,7 +7681,7 @@ snapshots:
       '@sd-jwt/sd-jwt-vc': 0.7.2
       '@sd-jwt/types': 0.7.2
       '@sd-jwt/utils': 0.7.2
-      '@sphereon/did-auth-siop': file:sphereon-did-auth-siop-0.16.0.tgz
+      '@sphereon/did-auth-siop': file:sphereon-did-auth-siop-0.16.0.tgz(patch_hash=cibo2rshoykkrgp26yrdzmmrti)
       '@sphereon/kmp-mdl-mdoc': 0.2.0-SNAPSHOT.6
       '@sphereon/pex': 3.3.3
       '@sphereon/pex-models': 2.2.4
@@ -7748,7 +7751,7 @@ snapshots:
   '@credo-ts/openid4vc@0.5.11-pr-1996-20240826150533(patch_hash=xrveeqbstenzz7j7sdm555tz5m)(expo@50.0.3(@babel/core@7.23.9)(@react-native/babel-preset@0.73.20(@babel/core@7.23.9)(@babel/preset-env@7.23.9(@babel/core@7.23.9))))(react-native@0.73.2(@babel/core@7.23.9)(@babel/preset-env@7.23.9(@babel/core@7.23.9))(react@18.2.0))(web-streams-polyfill@3.3.2)':
     dependencies:
       '@credo-ts/core': 0.5.11-pr-1996-20240826150533(patch_hash=ppnx2tn5rxkbexppgt3az3cgw4)(expo@50.0.3(@babel/core@7.23.9)(@react-native/babel-preset@0.73.20(@babel/core@7.23.9)(@babel/preset-env@7.23.9(@babel/core@7.23.9))))(react-native@0.73.2(@babel/core@7.23.9)(@babel/preset-env@7.23.9(@babel/core@7.23.9))(react@18.2.0))(web-streams-polyfill@3.3.2)
-      '@sphereon/did-auth-siop': file:sphereon-did-auth-siop-0.16.0.tgz
+      '@sphereon/did-auth-siop': file:sphereon-did-auth-siop-0.16.0.tgz(patch_hash=cibo2rshoykkrgp26yrdzmmrti)
       '@sphereon/oid4vc-common': 0.16.1-next.14
       '@sphereon/oid4vci-client': 0.16.1-next.14
       '@sphereon/oid4vci-common': 0.16.1-next.14
@@ -9471,7 +9474,7 @@ snapshots:
 
   '@sovpro/delimited-stream@1.1.0': {}
 
-  '@sphereon/did-auth-siop@file:sphereon-did-auth-siop-0.16.0.tgz':
+  '@sphereon/did-auth-siop@file:sphereon-did-auth-siop-0.16.0.tgz(patch_hash=cibo2rshoykkrgp26yrdzmmrti)':
     dependencies:
       '@astronautlabs/jsonpath': 1.1.2
       '@sphereon/did-uni-client': 0.6.3
