@@ -13,8 +13,7 @@
     },
     "patchedDependencies": {
       "@credo-ts/core@0.5.11-pr-1996-20240826150533": "patches/@credo-ts__core@0.5.11-pr-1996-20240826150533.patch",
-      "@credo-ts/openid4vc@0.5.11-pr-1996-20240826150533": "patches/@credo-ts__openid4vc@0.5.11-pr-1996-20240826150533.patch",
-      "@sphereon/did-auth-siop@0.16.0": "patches/@sphereon__did-auth-siop@0.16.0.patch"
+      "@credo-ts/openid4vc@0.5.11-pr-1996-20240826150533": "patches/@credo-ts__openid4vc@0.5.11-pr-1996-20240826150533.patch"
     }
   }
 }
