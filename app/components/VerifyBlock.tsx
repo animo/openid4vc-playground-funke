@@ -1,6 +1,6 @@
 import { getRequestStatus } from '@/lib/api'
 import { useInterval } from '@/lib/hooks'
-import { CheckboxIcon, ExclamationTriangleIcon } from '@radix-ui/react-icons'
+import { CheckboxIcon, ExclamationTriangleIcon, InfoCircledIcon } from '@radix-ui/react-icons'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { type FormEvent, useState } from 'react'
 import QRCode from 'react-qr-code'
@@ -17,6 +17,7 @@ export type RequestType = 'name_age_over_21' | 'city' | 'age_birth_family_name'
 
 type VerifyBlockProps = {
   flowName: string
+  x509Certificate?: string
   createRequest: ({
     credentialType,
     requestType,
@@ -29,7 +30,7 @@ type VerifyBlockProps = {
   }>
 }
 
-export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowName }) => {
+export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowName, x509Certificate }) => {
   const [authorizationRequestUri, setAuthorizationRequestUri] = useState<string>()
   const [verificationSessionId, setVerificationSessionId] = useState<string>()
   const [requestStatus, setRequestStatus] = useState<{
@@ -79,6 +80,20 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
 
   return (
     <Card className="p-6">
+      <Alert variant="default" className="mb-5">
+        <InfoCircledIcon className="h-4 w-4" />
+        <AlertTitle>Info</AlertTitle>
+        <AlertDescription>
+          This playground was built in the context for the{' '}
+          <a className="underline" href="https://www.sprind.org/en/challenges/eudi-wallet-prototypes/">
+            EUDI Wallet Prototype Funke
+          </a>
+          . It is only compatible with the current deployed version of{' '}
+          <a className="underline" href="https://github.com/animo/paradym-wallet/tree/main/apps/easypid">
+            Animo's EUDI Wallet Prototype
+          </a>.
+        </AlertDescription>
+      </Alert>
       <TypographyH3>{flowName}</TypographyH3>
       <form className="space-y-4 mt-4" onSubmit={onSubmitCreateRequest}>
         <div className="space-y-2">
@@ -191,6 +206,28 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
         <Button onClick={onSubmitCreateRequest} className="w-full" onSubmit={onSubmitCreateRequest}>
           Verify Credential
         </Button>
+
+        <div className="flex justify-center flex-col items-center bg-gray-200 min-h-64 w-full rounded-md p-7">
+          <h3>X.509 Certificate in base64 format</h3>
+          <TooltipProvider>
+            <Tooltip>
+              <div className="flex flex-col p-5 gap-2 justify-center items-center gap-6">
+                <TooltipTrigger asChild>
+                  <p
+                    onClick={(e) => navigator.clipboard.writeText(e.currentTarget.innerText)}
+                    className="text-gray-500 break-all cursor-pointer"
+                  >
+                    {x509Certificate ?? 'No X.509 Certificate found'}
+                  </p>
+                </TooltipTrigger>
+              </div>
+
+              <TooltipContent>
+                <p>Click to copy</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </form>
     </Card>
   )

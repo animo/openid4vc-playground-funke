@@ -174,7 +174,8 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
       requestSigner: {
         method: 'x5c',
         x5c: [x509Certificate],
-        issuer: 'https://9d6e-109-37-152-182.ngrok-free.app/siop/c01ea0f3-34df-41d5-89d1-50ef3d181855/authorize',
+        // FIXME: remove issuer param from credo as we can infer it from the url
+        issuer: `${AGENT_HOST}/siop/${verifier.verifierId}/authorize`,
       },
       presentationExchange: {
         definition: definition as any,

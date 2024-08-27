@@ -1,12 +1,15 @@
-import { createRequest, getIssuer } from '../lib/api'
+import { useEffect, useState } from 'react'
+import { createRequest, getIssuer, getX509Certificate } from '../lib/api'
 import { type CredentialType, type RequestType, VerifyBlock } from './VerifyBlock'
 
 export function VerifyTab() {
+  const [x509Certificate, setX509Certificate] = useState<string>()
+
   const createRequestForVerification = async (options: {
     credentialType: CredentialType
     requestType: RequestType
   }) => {
-    const issuer = (await getIssuer()).availableX509Certificates[0]
+    const issuer = (await getIssuer()).availableX509Certificates[0]  
     return await createRequest({
       presentationDefinition:
         options.credentialType === 'sdjwt'
@@ -15,9 +18,13 @@ export function VerifyTab() {
     })
   }
 
+  useEffect(() => {
+    getX509Certificate().then(({ certificate }) => setX509Certificate(certificate))
+  }, [])
+
   return (
     <>
-      <VerifyBlock flowName="Verify" createRequest={createRequestForVerification} />
+      <VerifyBlock flowName="Verify" createRequest={createRequestForVerification} x509Certificate={x509Certificate} />
     </>
   )
 }
