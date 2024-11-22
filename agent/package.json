@@ -1,10 +1,10 @@
 {
   "name": "agent",
   "dependencies": {
-    "@credo-ts/askar": "0.6.0-alpha-20241119125554",
-    "@credo-ts/core": "0.6.0-alpha-20241119125554",
-    "@credo-ts/node": "0.6.0-alpha-20241119125554",
-    "@credo-ts/openid4vc": "0.6.0-alpha-20241119125554",
+    "@credo-ts/askar": "0.6.0-pr-2094-20241120112900",
+    "@credo-ts/core": "0.6.0-pr-2094-20241120112900",
+    "@credo-ts/node": "0.6.0-pr-2094-20241120112900",
+    "@credo-ts/openid4vc": "0.6.0-pr-2094-20241120112900",
     "@hyperledger/aries-askar-nodejs": "^0.2.3",
     "@animo-id/mdoc": "^0.2.38",
     "cors": "^2.8.5",
@@ -24,6 +24,6 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "dev": "tsx watch -r dotenv/config src/server.ts dotenv_config_path=.env.development"
+    "dev": "tsx watch -r dotenv/config src/server.ts dotenv_config_path=.env.development dotenv_config_path=.env"
   }
 }

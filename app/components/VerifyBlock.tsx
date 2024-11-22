@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix
 import Link from 'next/link'
 import { type FormEvent, useEffect, useState } from 'react'
 import QRCode from 'react-qr-code'
+import type { CreateRequestOptions, CreateRequestResponse } from './VerifyTab'
 import { HighLight } from './highLight'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Button } from './ui/button'
@@ -19,19 +20,10 @@ export type ResponseMode = 'direct_post' | 'direct_post.jwt'
 type VerifyBlockProps = {
   flowName: string
   x509Certificate?: string
-  createRequest: ({
-    presentationDefinitionId,
-    requestScheme,
-    responseMode,
-  }: {
-    presentationDefinitionId: string
-    requestScheme: string
-    responseMode: ResponseMode
-  }) => Promise<{
-    verificationSessionId: string
-    authorizationRequestUri: string
-  }>
+  createRequest: (options: CreateRequestOptions) => Promise<CreateRequestResponse>
 }
+
+type RequestSignerType = CreateRequestOptions['requestSignerType']
 
 export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowName, x509Certificate }) => {
   const [authorizationRequestUri, setAuthorizationRequestUri] = useState<string>()
@@ -62,6 +54,7 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
   const isSuccess = requestStatus?.responseStatus === 'ResponseVerified'
   const [presentationDefinitionId, setPresentationDefinitionId] = useState<string>()
   const [requestScheme, setRequestScheme] = useState<string>('openid4vp://')
+  const [requestSignerType, setRequestSignerType] = useState<RequestSignerType>('x5c')
 
   useEffect(() => {
     getVerifier().then(setVerifier)
@@ -90,7 +83,12 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
     if (!id) {
       throw new Error('No definition')
     }
-    const request = await createRequest({ presentationDefinitionId: id, requestScheme, responseMode })
+    const request = await createRequest({
+      requestSignerType,
+      presentationDefinitionId: id,
+      requestScheme,
+      responseMode,
+    })
 
     setVerificationSessionId(request.verificationSessionId)
     setAuthorizationRequestUri(request.authorizationRequestUri)
@@ -132,6 +130,29 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
                   {p.display}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="response-mode">Request Signer Type</Label>
+          <Select
+            name="request-signer-type"
+            required
+            value={requestSignerType}
+            onValueChange={(value) => setRequestSignerType(value as RequestSignerType)}
+          >
+            <SelectTrigger className="w-1/2">
+              <SelectValue placeholder="Select request signer type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem key="x5c" value="x5c">
+                  <pre>X509 certificate</pre>
+                </SelectItem>
+                <SelectItem key="openid-federation" value="openid-federation">
+                  <pre>OpenID Federation</pre>
+                </SelectItem>
+              </SelectGroup>
             </SelectContent>
           </Select>
         </div>

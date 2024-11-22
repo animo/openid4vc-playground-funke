@@ -77,7 +77,9 @@ export async function createRequest({
   presentationDefinitionId,
   requestScheme,
   responseMode,
+  requestSignerType,
 }: {
+  requestSignerType: 'x5c' | 'openid-federation'
   presentationDefinitionId: string
   requestScheme: string
   responseMode: 'direct_post' | 'direct_post.jwt'
@@ -88,6 +90,7 @@ export async function createRequest({
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
+      requestSignerType,
       presentationDefinitionId,
       requestScheme,
       responseMode,

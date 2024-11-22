@@ -180,17 +180,19 @@ apiRouter.get('/verifier', async (_, response: Response) => {
 })
 
 const zCreatePresentationRequestBody = z.object({
+  requestSignerType: z.enum(['x5c', 'openid-federation']),
   presentationDefinitionId: z.string(),
   requestScheme: z.string(),
   responseMode: z.enum(['direct_post.jwt', 'direct_post']),
 })
 
 apiRouter.post('/requests/create', async (request: Request, response: Response) => {
-  const createPresentationRequestBody = zCreatePresentationRequestBody.parse(request.body)
+  const { presentationDefinitionId, requestScheme, responseMode, requestSignerType } =
+    await zCreatePresentationRequestBody.parseAsync(request.body)
 
   const x509Certificate = getX509Certificate()
 
-  const definitionId = createPresentationRequestBody.presentationDefinitionId
+  const definitionId = presentationDefinitionId
   const definition = allDefinitions.find((d) => d.id === definitionId)
   if (!definition) {
     return response.status(404).json({
@@ -209,22 +211,27 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
   const { authorizationRequest, verificationSession } =
     await agent.modules.openId4VcVerifier.createAuthorizationRequest({
       verifierId: verifier.verifierId,
-      requestSigner: {
-        method: 'x5c',
-        x5c: [x509Certificate],
-        // FIXME: remove issuer param from credo as we can infer it from the url
-        issuer: `${AGENT_HOST}/siop/${verifier.verifierId}/authorize`,
-      },
+      requestSigner:
+        requestSignerType === 'x5c'
+          ? {
+              method: 'x5c',
+              x5c: [x509Certificate],
+              // FIXME: remove issuer param from credo as we can infer it from the url
+              issuer: `${AGENT_HOST}/siop/${verifier.verifierId}/authorize`,
+            }
+          : {
+              method: 'openid-federation',
+            },
       presentationExchange: {
         definition,
       },
-      responseMode: createPresentationRequestBody.responseMode,
+      responseMode,
     })
 
   console.log(authorizationRequest)
 
   return response.json({
-    authorizationRequestUri: authorizationRequest.replace('openid4vp://', createPresentationRequestBody.requestScheme),
+    authorizationRequestUri: authorizationRequest.replace('openid4vp://', requestScheme),
     verificationSessionId: verificationSession.id,
   })
 })
