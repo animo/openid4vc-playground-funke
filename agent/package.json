@@ -1,12 +1,12 @@
 {
   "name": "agent",
   "dependencies": {
-    "@credo-ts/askar": "0.6.0-alpha-20241119125554",
-    "@credo-ts/core": "0.6.0-alpha-20241119125554",
-    "@credo-ts/node": "0.6.0-alpha-20241119125554",
-    "@credo-ts/openid4vc": "0.6.0-alpha-20241119125554",
+    "@credo-ts/askar": "0.6.0-pr-2100-20241124131043",
+    "@credo-ts/core": "0.6.0-pr-2100-20241124131043",
+    "@credo-ts/node": "0.6.0-pr-2100-20241124131043",
+    "@credo-ts/openid4vc": "0.6.0-pr-2100-20241124131043",
     "@hyperledger/aries-askar-nodejs": "^0.2.3",
-    "@animo-id/mdoc": "^0.2.38",
+    "@animo-id/mdoc": "^0.2.39",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
@@ -25,5 +25,12 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "dev": "tsx watch -r dotenv/config src/server.ts dotenv_config_path=.env.development"
+  },
+  "pnpm": {
+    "overrides": {
+      "@sphereon/did-auth-siop": "https://gitpkg.vercel.app/animo/OID4VC/packages/siop-oid4vp?funke",
+      "@sphereon/jarm": "https://gitpkg.vercel.app/animo/OID4VC/packages/jarm?funke",
+      "@sphereon/oid4vc-common": "https://gitpkg.vercel.app/animo/OID4VC/packages/common?funke"
+    }
   }
 }

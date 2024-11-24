@@ -1,6 +1,6 @@
-import { pidMdocInputDescriptor, pidSdJwtInputDescriptor } from './util'
-import type { PlaygroundVerifierOptions } from '../verifier'
 import { AGENT_HOST } from '../constants'
+import type { PlaygroundVerifierOptions } from '../verifier'
+import { pidMdocInputDescriptor, pidSdJwtInputDescriptor } from './util'
 
 export const animoVerifier = {
   clientMetadata: {
@@ -70,4 +70,5 @@ export const animoVerifier = {
       ],
     },
   ],
+  dcqlRequests: [],
 } as const satisfies PlaygroundVerifierOptions
