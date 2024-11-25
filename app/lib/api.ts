@@ -45,6 +45,20 @@ export async function getIssuer() {
   return response.json()
 }
 
+export async function addX509Certificate(certificate: string) {
+  const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/x509`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    method: 'POST',
+    body: JSON.stringify({
+      certificate,
+    }),
+  })
+
+  return response
+}
+
 export async function getX509Certificate(): Promise<{ base64: string; pem: string; decoded: string }> {
   const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/x509`)
 
