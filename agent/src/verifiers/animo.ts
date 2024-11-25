@@ -25,7 +25,7 @@ export const animoVerifier = {
       purpose: 'We need to verify your city',
       input_descriptors: [
         pidSdJwtInputDescriptor({
-          fields: ['place_of_birth.locality', 'adress.locality'],
+          fields: ['place_of_birth.locality', 'address.locality'],
         }),
       ],
     },
