@@ -116,79 +116,6 @@ export const photoIdMdocData = {
   },
 } satisfies StaticMdocSignInput
 
-export const photoIdSdJwt = {
-  format: OpenId4VciCredentialFormatProfile.SdJwtVc,
-  cryptographic_binding_methods_supported: ['jwk'],
-  cryptographic_suites_supported: [JwaSignatureAlgorithm.ES256],
-  scope: 'photo-id-sd-jwt',
-  vct: 'org.iso.23220.photoID.1',
-  display: [photoIdDisplay],
-  proof_types_supported: {
-    jwt: {
-      proof_signing_alg_values_supported: [JwaSignatureAlgorithm.ES256],
-    },
-  },
-} as const satisfies SdJwtConfiguration
-
-export const photoIdSdJwtData = {
-  credentialConfigurationId: 'photo-id-sd-jwt',
-  format: ClaimFormat.SdJwtVc,
-  credential: {
-    payload: {
-      ...photoIdPayload,
-      nbf: dateToSeconds(photoIdPayload.issue_date),
-      exp: dateToSeconds(photoIdPayload.expiry_date),
-      issuance_date: photoIdPayload.issue_date.toISOString(),
-      expiry_date: photoIdPayload.expiry_date.toISOString(),
-      vct: photoIdSdJwt.vct,
-      portrait: `data:image/jpeg;base64,${erikaPortrait.toString('base64')}`,
-    },
-    disclosureFrame: {
-      _sd: [
-        // First payload
-        'family_name_unicode',
-        'family_name_latin1',
-        'given_name_unicode',
-        'given_name_latin1',
-        'birth_date',
-        'portrait',
-        'issue_date',
-        'expiry_date',
-        'issuing_authority_unicode',
-        'issuing_country',
-        'age_over_18',
-        'age_in_years',
-        'age_birth_year',
-        'portrait_capture_date',
-        'birthplace',
-        'name_at_birth',
-        'resident_address_unicode',
-        'resident_city_unicode',
-        'resident_postal_code',
-        'resident_country',
-        'sex',
-        'nationality',
-        'document_number',
-
-        // Second payload
-        'person_id',
-        'birth_country',
-        'birth_state',
-        'birth_city',
-        'administrative_number',
-        'resident_street',
-        'resident_house_number',
-        'travel_document_number',
-
-        // Third payload
-        'dg1',
-        'dg2',
-        'sod',
-      ],
-    },
-  },
-} satisfies StaticSdJwtSignInput
-
 // ======= EU PID 1.5 =======
 
 const eudiPidDisplay = {
@@ -336,22 +263,18 @@ export const nederlandenIssuer = {
   credentialConfigurationsSupported: [
     {
       'vc+sd-jwt': {
-        configuration: photoIdSdJwt,
-        data: photoIdSdJwtData,
-      },
-      mso_mdoc: {
-        configuration: photoIdMdoc,
-        data: photoIdMdocData,
-      },
-    },
-    {
-      'vc+sd-jwt': {
         configuration: eudiPidSdJwt,
         data: eudiPidSdJwtData,
       },
       mso_mdoc: {
         configuration: eudiPidMdoc,
         data: eudiPidMdocData,
+      },
+    },
+    {
+      mso_mdoc: {
+        configuration: photoIdMdoc,
+        data: photoIdMdocData,
       },
     },
   ],
@@ -370,7 +293,6 @@ export const nederlandenIssuer = {
 } satisfies PlaygroundIssuerOptions
 
 export const nederlandenCredentialsData = {
-  [photoIdSdJwtData.credentialConfigurationId]: photoIdSdJwtData,
   [photoIdMdocData.credentialConfigurationId]: photoIdMdocData,
   [eudiPidSdJwtData.credentialConfigurationId]: eudiPidSdJwtData,
   [eudiPidMdocData.credentialConfigurationId]: eudiPidMdocData,

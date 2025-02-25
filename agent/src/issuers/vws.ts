@@ -2,25 +2,9 @@ import { ClaimFormat, JwaSignatureAlgorithm } from '@credo-ts/core'
 import { OpenId4VciCredentialFormatProfile } from '@credo-ts/openid4vc'
 
 import { AGENT_HOST } from '../constants'
-import type {
-  CredentialConfigurationDisplay,
-  MdocConfiguration,
-  PlaygroundIssuerOptions,
-  SdJwtConfiguration,
-} from '../issuer'
-import type { StaticMdocSignInput, StaticSdJwtSignInput } from '../types'
-import {
-  DateOnly,
-  dateToSeconds,
-  oneYearInMilliseconds,
-  serverStartupTimeInMilliseconds,
-  tenDaysInMilliseconds,
-} from '../utils/date'
-
-import { loadJPEGBufferSync } from '../utils/image'
-
-// Reuse from BDR, not exactly the same as in document though
-const erikaPortrait = loadJPEGBufferSync(`${__dirname}/../../assets/erika.jpeg`)
+import type { CredentialConfigurationDisplay, MdocConfiguration, PlaygroundIssuerOptions } from '../issuer'
+import type { StaticMdocSignInput } from '../types'
+import { DateOnly, oneYearInMilliseconds, serverStartupTimeInMilliseconds, tenDaysInMilliseconds } from '../utils/date'
 
 const eHealthDisplay = {
   locale: 'en',
@@ -142,68 +126,11 @@ export const eHealthMdocData = {
   },
 } satisfies StaticMdocSignInput
 
-export const eHealthSdJwt = {
-  format: OpenId4VciCredentialFormatProfile.SdJwtVc,
-  cryptographic_binding_methods_supported: ['jwk'],
-  cryptographic_suites_supported: [JwaSignatureAlgorithm.ES256],
-  scope: 'e-health-sd-jwt',
-  vct: 'org.micov.vtr.1.',
-  display: [eHealthDisplay],
-  proof_types_supported: {
-    jwt: {
-      proof_signing_alg_values_supported: [JwaSignatureAlgorithm.ES256],
-    },
-  },
-} as const satisfies SdJwtConfiguration
-
-export const eHealthSdJwtData = {
-  credentialConfigurationId: 'e-health-sd-jwt',
-  format: ClaimFormat.SdJwtVc,
-  credential: {
-    payload: {
-      ...eHealthPayload,
-      nbf: dateToSeconds(eHealthPayload.issuance_date),
-      exp: dateToSeconds(eHealthPayload.expiry_date),
-      issuance_date: eHealthPayload.issuance_date.toISOString(),
-      expiry_date: eHealthPayload.expiry_date.toISOString(),
-      vct: eHealthSdJwt.vct,
-      portrait: `data:image/jpeg;base64,${erikaPortrait.toString('base64')}`,
-    },
-    disclosureFrame: {
-      _sd: [
-        // First payload
-        'fn',
-        'gn',
-        'dob',
-        'sex',
-        'v_RA01_1',
-        'v_RA01_2',
-        'pid_PPN',
-        'pid_DL',
-        // Second payload
-        'RA01_vaccinated',
-        'RA01_test',
-        'safeEntry_Leisure',
-        'fac',
-        'fni',
-        'gni',
-        'by',
-        'bm',
-        'bd',
-      ],
-    },
-  },
-} satisfies StaticSdJwtSignInput
-
 export const vwsIssuer = {
   tags: [eHealthDisplay.name],
   issuerId: '23474550-4a4b-4e60-bb3f-fc2a28d68bd5',
   credentialConfigurationsSupported: [
     {
-      'vc+sd-jwt': {
-        configuration: eHealthSdJwt,
-        data: eHealthSdJwtData,
-      },
       mso_mdoc: {
         configuration: eHealthMdoc,
         data: eHealthMdocData,
@@ -226,6 +153,5 @@ export const vwsIssuer = {
 } satisfies PlaygroundIssuerOptions
 
 export const vwsCredentialsData = {
-  [eHealthSdJwtData.credentialConfigurationId]: eHealthSdJwtData,
   [eHealthMdocData.credentialConfigurationId]: eHealthMdocData,
 }

@@ -46,9 +46,9 @@ const mvrcPayload_2 = {
       family_name_latin1: 'baron Van der Cërnosljé',
       given_name_unicode: 'CBA',
       given_name_latin1: 'CBA',
-      resident_address: '',
-      resident_city: '',
-      resident_country: '',
+      // resident_address: '',
+      // resident_city: '',
+      // resident_country: '',
     },
   ],
   basic_vehicle_info: {
@@ -121,73 +121,12 @@ export const mvrcMdocData = {
   },
 } satisfies StaticMdocSignInput
 
-export const mvrcSdJwt = {
-  format: OpenId4VciCredentialFormatProfile.SdJwtVc,
-  cryptographic_binding_methods_supported: ['jwk'],
-  cryptographic_suites_supported: [JwaSignatureAlgorithm.ES256],
-  scope: 'mvrc-sd-jwt',
-  vct: 'org.iso.23220.photoID.1',
-  display: [mvrcDisplay],
-  proof_types_supported: {
-    jwt: {
-      proof_signing_alg_values_supported: [JwaSignatureAlgorithm.ES256],
-    },
-  },
-} as const satisfies SdJwtConfiguration
-
-export const mvrcSdJwtData = {
-  credentialConfigurationId: 'mvrc-sd-jwt',
-  format: ClaimFormat.SdJwtVc,
-  credential: {
-    payload: {
-      ...mvrcPayload,
-      nbf: dateToSeconds(mvrcPayload.issue_date),
-      exp: dateToSeconds(mvrcPayload.expiry_date),
-      issuance_date: mvrcPayload.issue_date.toISOString(),
-      expiry_date: mvrcPayload.expiry_date.toISOString(),
-      vct: mvrcSdJwt.vct,
-    },
-    disclosureFrame: {
-      _sd: [
-        // First payload
-        'issue_date',
-        'expiry_date',
-        'issuing_country',
-        'issuing_authority_unicode',
-        'document_number',
-
-        // Second payload
-        // 'issue_date',
-        // 'expiry_date',
-        'issuing_country',
-        'issuing_authority_unicode',
-        'document_number',
-        'registration_number',
-        'date_of_registration',
-        'date_of_first_registration',
-        'vehicle_identification_number',
-        'vehicle_holder',
-        'basic_vehicle_info',
-        'mass_info',
-        'trailer_mass_info',
-        'engine_info',
-        'seating_info',
-        'un_distinguishing_sign',
-      ],
-    },
-  },
-} satisfies StaticSdJwtSignInput
-
 // https://animosolutions.getoutline.com/doc/credential-msisdn-1BljW1GEM0
 export const mvrcIssuer = {
   tags: [mvrcDisplay.name],
   issuerId: '2943c018-8eac-4ddc-a234-da35857fa3e9',
   credentialConfigurationsSupported: [
     {
-      'vc+sd-jwt': {
-        configuration: mvrcSdJwt,
-        data: mvrcSdJwtData,
-      },
       mso_mdoc: {
         configuration: mvrcMdoc,
         data: mvrcMdocData,
@@ -209,6 +148,5 @@ export const mvrcIssuer = {
 } satisfies PlaygroundIssuerOptions
 
 export const mvrcCredentialsData = {
-  [mvrcSdJwtData.credentialConfigurationId]: mvrcSdJwtData,
   [mvrcMdocData.credentialConfigurationId]: mvrcMdocData,
 }
