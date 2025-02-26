@@ -160,15 +160,8 @@ export const DcApiVerifyBlock: React.FC<VerifyBlockProps> = ({ disabled = false 
         <InfoCircledIcon className="h-4 w-4" />
         <AlertTitle>Info</AlertTitle>
         <AlertDescription>
-          This playground was built in the context for the{' '}
-          <a className="underline" href="https://www.sprind.org/en/challenges/eudi-wallet-prototypes/">
-            EUDI Wallet Prototype Funke
-          </a>
-          . It is only compatible with the current deployed version of{' '}
-          <a className="underline" href="https://github.com/animo/paradym-wallet/tree/main/apps/easypid">
-            Animo&apos;s EUDI Wallet Prototype
-          </a>
-          .
+          This playground implements the Digital Credentials API with OpenID4VP and SD-JWT/mDOC as defined in High
+          Assurance Interoperability Profile
         </AlertDescription>
       </Alert>
       <TypographyH3>Verify (DC API)</TypographyH3>

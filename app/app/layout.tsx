@@ -8,8 +8,9 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Playground | Animo',
-  description: `This playground was built in the context for the EUDI Wallet Prototype Funke. It is only compatible with the current deployed version of Animo's EUDI Wallet Prototype.`,
+  title: 'OpenID4VP Digital Credentials Playground | Animo',
+  description:
+    'This playground implements the Digital Credentials API with OpenID4VP and SD-JWT/mDOC as defined in High Assurance Interoperability Profile',
 }
 
 export default function RootLayout({
