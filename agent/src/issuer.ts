@@ -124,8 +124,6 @@ export const getVerificationSessionForIssuanceSession: OpenId4VciGetVerification
       requestSigner: {
         method: 'x5c',
         x5c: certificates,
-        // FIXME: remove issuer param from credo as we can infer it from the url
-        issuer: `${AGENT_HOST}/siop/${verifier.verifierId}/authorize`,
       },
       presentationExchange:
         credentialConfigurationId === arfCompliantPidSdJwtData.credentialConfigurationId ||
