@@ -369,6 +369,7 @@ export const bundesregierungVerifier = {
       ],
       credentials: [
         mdocDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
           doctype: mobileDriversLicenseMdoc.doctype,
           namespace: 'org.iso.18013.5.1',
           fields: [
@@ -396,6 +397,7 @@ export const bundesregierungVerifier = {
       ],
       credentials: [
         mdocDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
           doctype: mobileDriversLicenseMdoc.doctype,
           namespace: 'org.iso.18013.5.1',
           fields: ['given_name', 'family_name'],

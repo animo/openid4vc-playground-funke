@@ -216,7 +216,7 @@ export const DcApiVerifyBlock: React.FC<VerifyBlockProps> = ({ disabled = false 
             </SelectContent>
           </Select>
         </div>
-        {/* <div className="space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="request-signer-type">Request Signer Type</Label>
 
           <RadioGroup
@@ -227,10 +227,9 @@ export const DcApiVerifyBlock: React.FC<VerifyBlockProps> = ({ disabled = false 
             defaultValue="none"
           >
             <MiniRadioItem key="none" value="none" label="None" />
-            <MiniRadioItem disabled key="x5c" value="x5c" label="x509 Certificate" />
-            <MiniRadioItem disabled key="openid-federation" value="openid-federation" label="OpenID Federation" />
+            <MiniRadioItem key="x5c" value="x5c" label="x509 Certificate" />
           </RadioGroup>
-        </div> */}
+        </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="response-mode">Use Response Encryption</Label>
           <Switch

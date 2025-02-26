@@ -209,7 +209,7 @@ const zCreatePresentationRequestBody = z.object({
 })
 
 const zCreatePresentationRequestDcBody = z.object({
-  requestSignerType: z.enum(['none']),
+  requestSignerType: z.enum(['none', 'x5c']),
   presentationDefinitionId: z.string(),
   responseMode: z.enum(['dc_api', 'dc_api.jwt']),
   purpose: z.string().optional(),
@@ -357,7 +357,7 @@ apiRouter.post('/requests/create-dc', async (request: Request, response: Respons
             }
           : undefined,
       responseMode,
-      expectedOrigins: [AGENT_HOST],
+      expectedOrigins: requestSignerType === 'none' ? undefined : [request.headers.origin as string],
     })
 
   console.log(authorizationRequest)
@@ -494,16 +494,11 @@ async function getVerificationStatus(verificationSession: OpenId4VcVerificationS
 apiRouter.post('/requests/verify-dc', async (request: Request, response: Response) => {
   const { verificationSessionId, data } = await zReceiveDcResponseBody.parseAsync(request.body)
 
-  const verifierId = (await agent.modules.openId4VcVerifier.getVerificationSessionById(verificationSessionId))
-    .verifierId
-  const service = agent.context.dependencyManager.resolve(OpenId4VcSiopVerifierService)
-
   try {
-    const { verificationSession } = await service.verifyAuthorizationResponse(agent.context, {
+    const { verificationSession } = await agent.modules.openId4VcVerifier.verifyAuthorizationResponse({
+      verificationSessionId,
       authorizationResponse: typeof data === 'string' ? JSON.parse(data) : data,
-      verifierId,
-      // FIXME: should be possible to pass origin on api level as well
-      origin: AGENT_HOST,
+      origin: request.headers.origin,
     })
 
     return response.json(await getVerificationStatus(verificationSession))
@@ -511,11 +506,8 @@ apiRouter.post('/requests/verify-dc', async (request: Request, response: Respons
     if (error instanceof RecordNotFoundError) {
       return response.status(404).send('Verification session not found')
     }
+    return response.status(500).send({ error: error instanceof Error ? error.message : 'Unknown error' })
   }
-})
-
-const zReceivePresentationRequestBody = z.object({
-  authorizationRequestUri: z.string().url(),
 })
 
 apiRouter.get('/requests/:verificationSessionId', async (request, response) => {

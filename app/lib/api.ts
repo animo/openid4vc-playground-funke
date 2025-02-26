@@ -139,7 +139,7 @@ export async function createRequest(data: {
 }
 
 export async function createRequestDc(data: {
-  requestSignerType: 'none'
+  requestSignerType: 'none' | 'x5c'
   presentationDefinitionId: string
   responseMode: 'dc_api' | 'dc_api.jwt'
   purpose?: string
@@ -172,7 +172,15 @@ export async function verifyResponseDc(data: {
   })
 
   if (!response.ok) {
-    throw new Error('Failed to verify response')
+    throw new Error(
+      `Failed to verify response.  
+        ${JSON.stringify(
+          await response
+            .json()
+            .then((a) => ('error' in a ? a.error : JSON.stringify(a, null, 2)))
+            .catch((e) => response.clone().text())
+        )}`
+    )
   }
 
   return response.json()
