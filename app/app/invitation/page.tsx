@@ -9,7 +9,7 @@ export default function InvitationPage() {
     () =>
       setIFrameUrl(
         location.href
-          .replace('https://funke.animo.id/invitation', 'https://paradym.id/invitation')
+          .replace('https://dc-api.animo.id/invitation', 'https://paradym.id/invitation')
           .replace('http://localhost:3000/invitation', 'https://paradym.id/invitation')
       ),
     []

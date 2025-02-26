@@ -3,9 +3,9 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import Image from 'next/image'
-import { IssueTab } from './IssueTab'
-import { VerifyTab } from './VerifyTab'
+
 import { X509Tab } from './X509Tab'
+import { DcApiVerifyBlock } from './DcApiVerifyBlock'
 
 export function Main() {
   return (
@@ -26,15 +26,11 @@ export function Main() {
         <div className="flex w-full items-center justify-center">
           <Tabs className="w-full max-w-5xl px-6" defaultValue="verify">
             <TabsList className="grid w-full grid-cols-3 gap-2">
-              <TabsTrigger value="verify">Verify</TabsTrigger>
-              <TabsTrigger value="issue">Issue</TabsTrigger>
+              <TabsTrigger value="verify">Verify DC API</TabsTrigger>
               <TabsTrigger value="x509">Manage Certificates</TabsTrigger>
             </TabsList>
             <TabsContent value="verify">
-              <VerifyTab />
-            </TabsContent>
-            <TabsContent value="issue">
-              <IssueTab />
+              <DcApiVerifyBlock />
             </TabsContent>
             <TabsContent value="x509">
               <X509Tab />

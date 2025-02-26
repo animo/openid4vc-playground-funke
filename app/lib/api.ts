@@ -36,6 +36,16 @@ export async function getVerifier() {
   return response.json()
 }
 
+export async function getVerifierDc() {
+  const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/verifier-dc`)
+
+  if (!response.ok) {
+    throw new Error('Failed to get verifier')
+  }
+
+  return response.json()
+}
+
 export type Issuers = Array<{
   id: string
   name: string
@@ -123,6 +133,46 @@ export async function createRequest(data: {
 
   if (!response.ok) {
     throw new Error('Failed to create request')
+  }
+
+  return response.json()
+}
+
+export async function createRequestDc(data: {
+  requestSignerType: 'none'
+  presentationDefinitionId: string
+  responseMode: 'dc_api' | 'dc_api.jwt'
+  purpose?: string
+}) {
+  const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/requests/create-dc`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to create request')
+  }
+
+  return response.json()
+}
+
+export async function verifyResponseDc(data: {
+  verificationSessionId: string
+  data: string | Record<string, unknown>
+}) {
+  const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/requests/verify-dc`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  })
+
+  if (!response.ok) {
+    throw new Error('Failed to verify response')
   }
 
   return response.json()

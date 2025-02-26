@@ -14,7 +14,7 @@ export function sdJwtDcqlCredential({
 }): DcqlQuery['credentials'][number] {
   return {
     id: id ?? randomUUID(),
-    format: 'vc+sd-jwt',
+    format: 'dc+sd-jwt',
     meta: {
       vct_values: vcts,
     },
@@ -52,6 +52,10 @@ export function sdJwtInputDescriptor({
         'sd-jwt_alg_values': ['ES256'],
         'kb-jwt_alg_values': ['ES256'],
       },
+      // 'dc+sd-jwt': {
+      //   'sd-jwt_alg_values': ['ES256'],
+      //   'kb-jwt_alg_values': ['ES256'],
+      // },
     },
     group: group ? (Array.isArray(group) ? group : [group]) : undefined,
     constraints: {
@@ -99,8 +103,7 @@ export function mdocDcqlCredential({
       doctype_value: doctype,
     },
     claims: fields.map((field) => ({
-      namespace,
-      claim_name: field,
+      path: [namespace, field],
     })),
   }
 }

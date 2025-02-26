@@ -11,7 +11,11 @@ import {
   X509Certificate,
   X509ModuleConfig,
 } from '@credo-ts/core'
-import { OpenId4VcVerificationSessionState } from '@credo-ts/openid4vc'
+import {
+  OpenId4VcSiopVerifierService,
+  type OpenId4VcVerificationSessionRecord,
+  OpenId4VcVerificationSessionState,
+} from '@credo-ts/openid4vc'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import z from 'zod'
 import { agent } from './agent'
@@ -154,30 +158,47 @@ apiRouter.get('/verifier', async (_, response: Response) => {
   })
 })
 
-apiRouter.post('/trust-chains', async (request: Request, response: Response) => {
-  const parseResult = await z
-    .object({
-      entityId: z.string(),
-      trustAnchorEntityIds: z.array(z.string()),
-    })
-    .safeParseAsync(request.body)
-
-  if (!parseResult.success) {
-    return response.status(400).json({
-      error: parseResult.error.message,
-      details: parseResult.error.issues,
-    })
-  }
-
-  const { entityId, trustAnchorEntityIds } = parseResult.data
-
-  const chains = await agent.modules.openId4VcHolder.resolveOpenIdFederationChains({
-    entityId,
-    trustAnchorEntityIds: trustAnchorEntityIds as [string, ...string[]],
+apiRouter.get('/verifier-dc', async (_, response: Response) => {
+  return response.json({
+    presentationRequests: verifiers
+      .flatMap((verifier) =>
+        verifier.dcqlRequests.map((c) => {
+          if (c.credentials.length > 1) return undefined
+          return {
+            useCase: 'useCase' in verifier ? verifier.useCase : undefined,
+            display: c.name,
+            id: c.id,
+          }
+        })
+      )
+      .filter((i) => i !== undefined),
   })
-
-  return response.json(chains)
 })
+
+// apiRouter.post('/trust-chains', async (request: Request, response: Response) => {
+//   const parseResult = await z
+//     .object({
+//       entityId: z.string(),
+//       trustAnchorEntityIds: z.array(z.string()),
+//     })
+//     .safeParseAsync(request.body)
+
+//   if (!parseResult.success) {
+//     return response.status(400).json({
+//       error: parseResult.error.message,
+//       details: parseResult.error.issues,
+//     })
+//   }
+
+//   const { entityId, trustAnchorEntityIds } = parseResult.data
+
+//   const chains = await agent.modules.openId4VcHolder.resolveOpenIdFederationChains({
+//     entityId,
+//     trustAnchorEntityIds: trustAnchorEntityIds as [string, ...string[]],
+//   })
+
+//   return response.json(chains)
+// })
 
 const zCreatePresentationRequestBody = z.object({
   requestSignerType: z.enum(['x5c', 'openid-federation']),
@@ -185,6 +206,18 @@ const zCreatePresentationRequestBody = z.object({
   requestScheme: z.string(),
   responseMode: z.enum(['direct_post.jwt', 'direct_post']),
   purpose: z.string().optional(),
+})
+
+const zCreatePresentationRequestDcBody = z.object({
+  requestSignerType: z.enum(['none']),
+  presentationDefinitionId: z.string(),
+  responseMode: z.enum(['dc_api', 'dc_api.jwt']),
+  purpose: z.string().optional(),
+})
+
+const zReceiveDcResponseBody = z.object({
+  verificationSessionId: z.string(),
+  data: z.union([z.string(), z.record(z.unknown())]),
 })
 
 apiRouter.post('/requests/create', async (request: Request, response: Response) => {
@@ -218,16 +251,14 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
     await agent.modules.openId4VcVerifier.createAuthorizationRequest({
       verifierId: verifier.verifierId,
       requestSigner:
-        requestSignerType === 'x5c'
-          ? {
-              method: 'x5c',
-              x5c: [x509DcsCertificate, x509RootCertificate],
-              // FIXME: remove issuer param from credo as we can infer it from the url
-              issuer: `${AGENT_HOST}/siop/${verifier.verifierId}/authorize`,
-            }
-          : {
-              method: 'openid-federation',
-            },
+        // requestSignerType === 'x5c'
+        /* ? */ {
+          method: 'x5c',
+          x5c: [x509DcsCertificate, x509RootCertificate],
+        },
+      // : {
+      //     method: 'openid-federation',
+      //   }
       presentationExchange:
         'input_descriptors' in definition
           ? {
@@ -254,7 +285,7 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
 
   console.log(authorizationRequest)
 
-  const authorizationRequestJwt = Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt)
+  const authorizationRequestJwt = Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt as string)
   const dcqlQuery = authorizationRequestJwt.payload.additionalClaims.dcql_query
   const presentationDefinition = authorizationRequestJwt.payload.additionalClaims.presentation_definition
 
@@ -271,6 +302,218 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
   })
 })
 
+apiRouter.post('/requests/create-dc', async (request: Request, response: Response) => {
+  const { presentationDefinitionId, responseMode, purpose, requestSignerType } =
+    await zCreatePresentationRequestDcBody.parseAsync(request.body)
+  const x509RootCertificate = getX509RootCertificate()
+  const x509DcsCertificate = getX509DcsCertificate()
+
+  const definitionId = presentationDefinitionId
+  const definition = allDefinitions.find((d) => d.id === definitionId)
+  if (!definition) {
+    return response.status(404).json({
+      error: 'Definition not found',
+    })
+  }
+
+  const verifierId = verifiers.find(
+    (a) =>
+      a.presentationRequests.find((r) => r.id === definition.id) ?? a.dcqlRequests.find((r) => r.id === definition.id)
+  )?.verifierId
+  if (!verifierId) {
+    return response.status(404).json({
+      error: 'Verifier not found',
+    })
+  }
+  const verifier = await getVerifier(verifierId)
+  console.log('Requesting definition', JSON.stringify(definition, null, 2))
+
+  const { authorizationRequest, verificationSession, authorizationRequestObject } =
+    await agent.modules.openId4VcVerifier.createAuthorizationRequest({
+      verifierId: verifier.verifierId,
+      requestSigner:
+        requestSignerType === 'none'
+          ? { method: 'none' }
+          : { method: 'x5c', x5c: [x509DcsCertificate, x509RootCertificate] },
+      presentationExchange:
+        'input_descriptors' in definition
+          ? {
+              definition: {
+                ...definition,
+                purpose: purpose ?? definition.purpose,
+              },
+            }
+          : undefined,
+      dcql:
+        'credentials' in definition
+          ? {
+              query: {
+                ...definition,
+                credential_sets:
+                  purpose && definition.credential_sets
+                    ? definition.credential_sets.map((set) => ({ ...set, purpose }))
+                    : definition.credential_sets,
+              },
+            }
+          : undefined,
+      responseMode,
+      expectedOrigins: [AGENT_HOST],
+    })
+
+  console.log(authorizationRequest)
+
+  const authorizationRequestJwt = verificationSession.authorizationRequestJwt
+    ? Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt)
+    : undefined
+  const authorizationRequestPayload = verificationSession.requestPayload
+  const dcqlQuery = authorizationRequestPayload.dcql_query
+  const presentationDefinition = authorizationRequestPayload.presentation_definition
+
+  return response.json({
+    authorizationRequestUri: authorizationRequest,
+    verificationSessionId: verificationSession.id,
+    responseStatus: verificationSession.state,
+    dcqlQuery,
+    definition: presentationDefinition,
+    authorizationRequestObject,
+    authorizationRequest: {
+      payload: verificationSession.requestPayload,
+      header: authorizationRequestJwt?.header,
+    },
+  })
+})
+
+async function getVerificationStatus(verificationSession: OpenId4VcVerificationSessionRecord) {
+  const authorizationRequestJwt = verificationSession.authorizationRequestJwt
+    ? Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt)
+    : undefined
+  const authorizationRequestPayload = verificationSession.requestPayload
+
+  const authorizationRequest = {
+    payload: verificationSession.requestPayload,
+    header: authorizationRequestJwt?.header,
+  }
+  const dcqlQuery = authorizationRequestPayload.dcql_query
+  const presentationDefinition = authorizationRequestPayload.presentation_definition
+
+  if (verificationSession.state === OpenId4VcVerificationSessionState.ResponseVerified) {
+    const verified = await agent.modules.openId4VcVerifier.getVerifiedAuthorizationResponse(verificationSession.id)
+    console.log(verified.presentationExchange?.presentations)
+    console.log(verified.dcql?.presentationResult)
+
+    const presentations = await Promise.all(
+      (verified.presentationExchange?.presentations ?? Object.values(verified.dcql?.presentation ?? {})).map(
+        async (presentation) => {
+          if (presentation instanceof W3cJsonLdVerifiablePresentation) {
+            return {
+              pretty: presentation.toJson(),
+              encoded: presentation.toJson(),
+            }
+          }
+
+          if (presentation instanceof W3cJwtVerifiablePresentation) {
+            return {
+              pretty: JsonTransformer.toJSON(presentation.presentation),
+              encoded: presentation.serializedJwt,
+            }
+          }
+
+          if (presentation instanceof MdocDeviceResponse) {
+            return {
+              pretty: JsonTransformer.toJSON({
+                documents: presentation.documents.map((doc) => ({
+                  doctype: doc.docType,
+                  alg: doc.alg,
+                  base64Url: doc.base64Url,
+                  validityInfo: doc.validityInfo,
+                  deviceSignedNamespaces: doc.deviceSignedNamespaces,
+                  issuerSignedNamespaces: Object.entries(doc.issuerSignedNamespaces).map(
+                    ([nameSpace, nameSpacEntries]) => [
+                      nameSpace,
+                      Object.entries(nameSpacEntries).map(([key, value]) =>
+                        value instanceof Uint8Array
+                          ? [`base64:${key}`, `data:image/jpeg;base64,${TypedArrayEncoder.toBase64(value)}`]
+                          : [key, value]
+                      ),
+                    ]
+                  ),
+                })),
+              }),
+              encoded: presentation.base64Url,
+            }
+          }
+
+          return {
+            pretty: {
+              ...presentation,
+              compact: undefined,
+            },
+            encoded: presentation.compact,
+          }
+        }
+      ) ?? []
+    )
+
+    const dcqlSubmission = verified.dcql
+      ? Object.keys(verified.dcql.presentation).map((key, index) => ({
+          queryCredentialId: key,
+          presentationIndex: index,
+        }))
+      : undefined
+
+    console.log('presentations', presentations)
+
+    return {
+      verificationSessionId: verificationSession.id,
+      responseStatus: verificationSession.state,
+      error: verificationSession.errorMessage,
+      authorizationRequest,
+
+      presentations: presentations,
+
+      submission: verified.presentationExchange?.submission,
+      definition: verified.presentationExchange?.definition,
+
+      dcqlQuery,
+      dcqlSubmission: verified.dcql
+        ? { ...verified.dcql.presentationResult, vpTokenMapping: dcqlSubmission }
+        : undefined,
+    }
+  }
+
+  return {
+    verificationSessionId: verificationSession.id,
+    responseStatus: verificationSession.state,
+    error: verificationSession.errorMessage,
+    authorizationRequest,
+    definition: presentationDefinition,
+    dcqlQuery,
+  }
+}
+
+apiRouter.post('/requests/verify-dc', async (request: Request, response: Response) => {
+  const { verificationSessionId, data } = await zReceiveDcResponseBody.parseAsync(request.body)
+
+  const verifierId = (await agent.modules.openId4VcVerifier.getVerificationSessionById(verificationSessionId))
+    .verifierId
+  const service = agent.context.dependencyManager.resolve(OpenId4VcSiopVerifierService)
+
+  try {
+    const { verificationSession } = await service.verifyAuthorizationResponse(agent.context, {
+      authorizationResponse: typeof data === 'string' ? JSON.parse(data) : data,
+      verifierId,
+      // FIXME: should be possible to pass origin on api level as well
+      origin: AGENT_HOST,
+    })
+
+    return response.json(await getVerificationStatus(verificationSession))
+  } catch (error) {
+    if (error instanceof RecordNotFoundError) {
+      return response.status(404).send('Verification session not found')
+    }
+  }
+})
+
 const zReceivePresentationRequestBody = z.object({
   authorizationRequestUri: z.string().url(),
 })
@@ -280,143 +523,12 @@ apiRouter.get('/requests/:verificationSessionId', async (request, response) => {
 
   try {
     const verificationSession = await agent.modules.openId4VcVerifier.getVerificationSessionById(verificationSessionId)
-
-    const authorizationRequestJwt = Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt)
-    const authorizationRequest = {
-      payload: authorizationRequestJwt.payload.toJson(),
-      header: authorizationRequestJwt.header,
-    }
-    const dcqlQuery = authorizationRequestJwt.payload.additionalClaims.dcql_query
-    const presentationDefinition = authorizationRequestJwt.payload.additionalClaims.presentation_definition
-
-    if (verificationSession.state === OpenId4VcVerificationSessionState.ResponseVerified) {
-      const verified = await agent.modules.openId4VcVerifier.getVerifiedAuthorizationResponse(verificationSessionId)
-      console.log(verified.presentationExchange?.presentations)
-      console.log(verified.dcql?.presentationResult)
-
-      const presentations = await Promise.all(
-        (verified.presentationExchange?.presentations ?? Object.values(verified.dcql?.presentation ?? {})).map(
-          async (presentation) => {
-            if (presentation instanceof W3cJsonLdVerifiablePresentation) {
-              return {
-                pretty: presentation.toJson(),
-                encoded: presentation.toJson(),
-              }
-            }
-
-            if (presentation instanceof W3cJwtVerifiablePresentation) {
-              return {
-                pretty: JsonTransformer.toJSON(presentation.presentation),
-                encoded: presentation.serializedJwt,
-              }
-            }
-
-            if (presentation instanceof MdocDeviceResponse) {
-              return {
-                pretty: JsonTransformer.toJSON({
-                  documents: presentation.documents.map((doc) => ({
-                    doctype: doc.docType,
-                    alg: doc.alg,
-                    base64Url: doc.base64Url,
-                    validityInfo: doc.validityInfo,
-                    deviceSignedNamespaces: doc.deviceSignedNamespaces,
-                    issuerSignedNamespaces: Object.entries(doc.issuerSignedNamespaces).map(
-                      ([nameSpace, nameSpacEntries]) => [
-                        nameSpace,
-                        Object.entries(nameSpacEntries).map(([key, value]) =>
-                          value instanceof Uint8Array
-                            ? [`base64:${key}`, `data:image/jpeg;base64,${TypedArrayEncoder.toBase64(value)}`]
-                            : [key, value]
-                        ),
-                      ]
-                    ),
-                  })),
-                }),
-                encoded: presentation.base64Url,
-              }
-            }
-
-            return {
-              pretty: {
-                ...presentation,
-                compact: undefined,
-              },
-              encoded: presentation.compact,
-            }
-          }
-        ) ?? []
-      )
-
-      const dcqlSubmission = verified.dcql
-        ? Object.keys(verified.dcql.presentation).map((key, index) => ({
-            queryCredentialId: key,
-            presentationIndex: index,
-          }))
-        : undefined
-
-      console.log('presentations', presentations)
-
-      return response.json({
-        verificationSessionId: verificationSession.id,
-        responseStatus: verificationSession.state,
-        error: verificationSession.errorMessage,
-        authorizationRequest,
-
-        presentations: presentations,
-
-        submission: verified.presentationExchange?.submission,
-        definition: verified.presentationExchange?.definition,
-
-        dcqlQuery: dcqlQuery ? JSON.parse(dcqlQuery as string) : undefined,
-        dcqlSubmission: verified.dcql
-          ? { ...verified.dcql.presentationResult, vpTokenMapping: dcqlSubmission }
-          : undefined,
-      })
-    }
-
-    return response.json({
-      verificationSessionId: verificationSession.id,
-      responseStatus: verificationSession.state,
-      error: verificationSession.errorMessage,
-      authorizationRequest,
-      definition: presentationDefinition,
-      dcqlQuery: dcqlQuery ? JSON.parse(dcqlQuery as string) : undefined,
-    })
+    return response.json(await getVerificationStatus(verificationSession))
   } catch (error) {
     if (error instanceof RecordNotFoundError) {
       return response.status(404).send('Verification session not found')
     }
   }
-})
-
-apiRouter.post('/requests/receive', async (request: Request, response: Response) => {
-  const receivePresentationRequestBody = zReceivePresentationRequestBody.parse(request.body)
-
-  const resolved = await agent.modules.openId4VcHolder.resolveSiopAuthorizationRequest(
-    receivePresentationRequestBody.authorizationRequestUri
-  )
-
-  if (!resolved.presentationExchange) {
-    return response.status(500).json({
-      error: 'Expected presentation_definition to be included in authorization request',
-    })
-  }
-
-  // FIXME: expose PresentationExchange API (or allow auto-select in another way)
-  const presentationExchangeService = agent.dependencyManager.resolve(DifPresentationExchangeService)
-
-  const selectedCredentials = presentationExchangeService.selectCredentialsForRequest(
-    resolved.presentationExchange?.credentialsForRequest
-  )
-
-  const { submittedResponse, serverResponse } = await agent.modules.openId4VcHolder.acceptSiopAuthorizationRequest({
-    authorizationRequest: resolved.authorizationRequest,
-    presentationExchange: {
-      credentials: selectedCredentials,
-    },
-  })
-
-  return response.status(serverResponse.status).json(submittedResponse)
 })
 
 apiRouter.use((error: Error, _request: Request, response: Response, _next: NextFunction) => {

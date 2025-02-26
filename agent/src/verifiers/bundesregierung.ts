@@ -5,6 +5,7 @@ import type { PlaygroundVerifierOptions } from '../verifier'
 import {
   mdocDcqlCredential,
   mdocInputDescriptor,
+  pidMdocDcqlCredential,
   pidMdocInputDescriptor,
   sdJwtDcqlCredential,
   sdJwtInputDescriptor,
@@ -171,8 +172,8 @@ export const bundesregierungVerifier = {
       ],
     },
     {
-      id: 'ffc717a3-abaf-4ec3-9c55-a9b8e998874c',
-      name: 'ARF compliant PID (sd-jwt vc)',
+      id: 'df9feb49-e818-43b3-a0d1-22c226119782',
+      name: 'ARF PID (sd-jwt vc) - Most',
       credential_sets: [
         {
           options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
@@ -212,6 +213,192 @@ export const bundesregierungVerifier = {
             'resident_street',
             'nationality',
           ],
+        }),
+      ],
+    },
+    {
+      id: 'e7af63de-e708-4102-b739-a8ef8e42213a',
+      name: 'ARF PID (sd-jwt vc) - Mandatory',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your ARF compliant PID',
+        },
+      ],
+      credentials: [
+        sdJwtDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
+          vcts: [arfCompliantPidSdJwt.vct],
+          fields: [
+            // Mandatory
+            'family_name',
+            'given_name',
+            'birth_date',
+            'age_over_18',
+
+            // Mandatory metadata
+            'issuance_date',
+            'expiry_date',
+            'issuing_country',
+            'issuing_authority',
+          ],
+        }),
+      ],
+    },
+    {
+      id: '7a373bed-27ad-4aa1-814f-e0d990d2fb07',
+      name: 'ARF PID (sd-jwt vc) - Names',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your ARF compliant PID',
+        },
+      ],
+      credentials: [
+        sdJwtDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
+          vcts: [arfCompliantPidSdJwt.vct],
+          fields: [
+            // Mandatory
+            'family_name',
+            'given_name',
+          ],
+        }),
+      ],
+    },
+    {
+      id: 'c6e99ec3-8140-4c31-843d-b15285e28032',
+      name: 'PID (mdoc) - Most',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your PID',
+        },
+      ],
+      credentials: [
+        pidMdocDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
+          fields: [
+            // Mandatory
+            'family_name',
+            'given_name',
+            'birth_date',
+            'age_over_18',
+
+            // Mandatory metadata
+            'issuance_date',
+            'expiry_date',
+            'issuing_country',
+            'issuing_authority',
+
+            // Optional
+            'age_over_12',
+            'age_over_14',
+            'age_over_16',
+            'age_over_21',
+            'age_over_65',
+            'age_in_years',
+            'age_birth_year',
+            'family_name_birth',
+            'birth_city',
+            'resident_country',
+            'resident_city',
+            'resident_postal_code',
+            'resident_street',
+            'nationality',
+          ],
+        }),
+      ],
+    },
+    {
+      id: 'ffc717a3-abaf-4ec3-9c55-a9b8e998874c',
+      name: 'PID (mdoc) - Mandatory',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your ARF compliant PID',
+        },
+      ],
+      credentials: [
+        pidMdocDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
+          fields: [
+            // Mandatory
+            'family_name',
+            'given_name',
+            'birth_date',
+            'age_over_18',
+
+            // Mandatory metadata
+            'issuance_date',
+            'expiry_date',
+            'issuing_country',
+            'issuing_authority',
+          ],
+        }),
+      ],
+    },
+    {
+      id: '3f3f20de-fe5e-448d-9954-306f2c8e883b',
+      name: 'PID (mdoc) - Names',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your ARF compliant PID',
+        },
+      ],
+      credentials: [
+        pidMdocDcqlCredential({
+          id: 'b917e4ec-768c-4b1d-b716-8a83cf646ffb',
+          fields: [
+            // Mandatory
+            'family_name',
+            'given_name',
+          ],
+        }),
+      ],
+    },
+    {
+      id: '4f796b88-bc07-4fb9-ad40-ab485cd1394d',
+      name: 'mDL (mdoc) - Mandatory',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your drivers license',
+        },
+      ],
+      credentials: [
+        mdocDcqlCredential({
+          doctype: mobileDriversLicenseMdoc.doctype,
+          namespace: 'org.iso.18013.5.1',
+          fields: [
+            'given_name',
+            'family_name',
+            'birth_date',
+            'document_number',
+            'issue_date',
+            'expiry_date',
+            'issuing_country',
+            'issuing_authority',
+            'driving_privileges',
+          ],
+        }),
+      ],
+    },
+    {
+      id: '42a6b830-68fb-4010-b471-623552eef043',
+      name: 'mDL (mdoc) - Names',
+      credential_sets: [
+        {
+          options: [['b917e4ec-768c-4b1d-b716-8a83cf646ffb']],
+          purpose: 'To grant you access we need to verify your drivers license',
+        },
+      ],
+      credentials: [
+        mdocDcqlCredential({
+          doctype: mobileDriversLicenseMdoc.doctype,
+          namespace: 'org.iso.18013.5.1',
+          fields: ['given_name', 'family_name'],
         }),
       ],
     },

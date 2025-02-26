@@ -1,12 +1,9 @@
-import { type createRequest, getRequestStatus, getVerifier } from '@/lib/api'
-import { useInterval } from '@/lib/hooks'
+import { createRequestDc, getVerifierDc, verifyResponseDc } from '@/lib/api'
 import { CheckboxIcon, ExclamationTriangleIcon, InfoCircledIcon } from '@radix-ui/react-icons'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@radix-ui/react-tooltip'
 import { groupBy } from 'es-toolkit'
-import Link from 'next/link'
 import { type FormEvent, useEffect, useState } from 'react'
-import QRCode from 'react-qr-code'
 import { CollapsibleSection } from './CollapsibleSection'
+
 import { X509Certificates } from './X509Certificates'
 import { HighLight } from './highLight'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
@@ -19,22 +16,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch'
 import { TypographyH3 } from './ui/typography'
 
-export type CreateRequestOptions = Parameters<typeof createRequest>[0]
-export type CreateRequestResponse = Awaited<ReturnType<typeof createRequest>>
-
-export type ResponseMode = 'direct_post' | 'direct_post.jwt'
+export type ResponseMode = 'dc_api' | 'dc_api.jwt'
 type ResponseStatus = 'RequestCreated' | 'RequestUriRetrieved' | 'ResponseVerified' | 'Error'
 
+export type CreateRequestOptions = Parameters<typeof createRequestDc>[0]
+export type CreateRequestResponse = Awaited<ReturnType<typeof createRequestDc>>
+
 type VerifyBlockProps = {
-  flowName: string
-  createRequest: (options: CreateRequestOptions) => Promise<CreateRequestResponse>
-  disabled: boolean
+  disabled?: boolean
 }
 
 type RequestSignerType = CreateRequestOptions['requestSignerType']
 
-export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowName, disabled }) => {
-  const [authorizationRequestUri, setAuthorizationRequestUri] = useState<string>()
+export const DcApiVerifyBlock: React.FC<VerifyBlockProps> = ({ disabled = false }) => {
   const [verificationSessionId, setVerificationSessionId] = useState<string>()
   const [requestStatus, setRequestStatus] = useState<{
     verificationSessionId: string
@@ -54,45 +48,31 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
       useCase: { name: string; icon: string; tags: Array<string> }
     }>
   }>()
-  const [responseMode, setResponseMode] = useState<ResponseMode>('direct_post.jwt')
+  const [responseMode, setResponseMode] = useState<ResponseMode>('dc_api')
+  const [authorizationRequestObject, setAuthorizationRequestObject] = useState<Record<string, unknown>>()
 
   const enabled =
     verificationSessionId !== undefined &&
     requestStatus?.responseStatus !== 'ResponseVerified' &&
     requestStatus?.responseStatus !== 'Error'
 
-  const authorizationRequestUriHasBeenFetched = requestStatus?.responseStatus === 'RequestUriRetrieved'
   const hasResponse = requestStatus?.responseStatus === 'ResponseVerified' || requestStatus?.responseStatus === 'Error'
   const isSuccess = requestStatus?.responseStatus === 'ResponseVerified'
   const [presentationDefinitionId, setPresentationDefinitionId] = useState<string>()
-  const [requestScheme, setRequestScheme] = useState<string>('openid4vp://')
   const [purpose, setPurpose] = useState<string>()
-  const [requestSignerType, setRequestSignerType] = useState<RequestSignerType>('x5c')
+  const [requestSignerType, setRequestSignerType] = useState<RequestSignerType>('none')
   const [selectedUseCase, setSelectedUseCase] = useState<string>()
 
   useEffect(() => {
-    getVerifier().then((v: NonNullable<typeof verifier>) => {
+    getVerifierDc().then((v: NonNullable<typeof verifier>) => {
       setVerifier(v)
       setSelectedUseCase(Object.keys(groupBy(v.presentationRequests, (vv) => vv.useCase.name))[0])
     })
   }, [])
 
-  useInterval({
-    callback: async () => {
-      if (!verificationSessionId) return
-
-      const requestStatus = await getRequestStatus({ verificationSessionId })
-      setRequestStatus(requestStatus)
-    },
-    interval: 500,
-    enabled,
-  })
-
   const onSubmitCreateRequest = async (e: FormEvent) => {
     e.preventDefault()
 
-    // Clear state
-    setAuthorizationRequestUri(undefined)
     setVerificationSessionId(undefined)
     setRequestStatus(undefined)
 
@@ -100,16 +80,73 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
     if (!id) {
       throw new Error('No definition')
     }
-    const request = await createRequest({
+    const request = await createRequestDc({
       presentationDefinitionId: id,
-      requestScheme,
       responseMode,
       purpose: purpose && purpose !== '' ? purpose : undefined,
       requestSignerType,
     })
+
     setRequestStatus(request)
     setVerificationSessionId(request.verificationSessionId)
-    setAuthorizationRequestUri(request.authorizationRequestUri)
+    setAuthorizationRequestObject(request.authorizationRequestObject)
+
+    try {
+      const credentialResponse = await navigator.credentials.get({
+        // @ts-ignore
+        digital: {
+          providers: [
+            {
+              protocol: 'openid4vp',
+              request: request.authorizationRequestObject,
+            },
+          ],
+        },
+      })
+      if (!credentialResponse) {
+        setRequestStatus({
+          ...request,
+          responseStatus: 'Error',
+          error: 'Did not receive a response from Digital Credentials API',
+        })
+        return
+      }
+      if (credentialResponse.constructor.name === 'DigitalCredential') {
+        // @ts-ignore
+        const data = credentialResponse.data
+
+        setRequestStatus(
+          await verifyResponseDc({
+            verificationSessionId: request.verificationSessionId,
+            data,
+          })
+        )
+        return
+      }
+      if (credentialResponse.constructor.name === 'IdentityCredential') {
+        // @ts-ignore
+        const data = credentialResponse.token
+
+        setRequestStatus(
+          await verifyResponseDc({
+            verificationSessionId: request.verificationSessionId,
+            data,
+          })
+        )
+        return
+      }
+      setRequestStatus({
+        ...request,
+        responseStatus: 'Error',
+        error: 'Unknown response type from Digital Credentials API',
+      })
+    } catch (error) {
+      setRequestStatus({
+        ...request,
+        responseStatus: 'Error',
+        error: error instanceof Error ? error.message : 'Unknown error while calling Digital Credentials API',
+      })
+    }
   }
 
   // This is wrong
@@ -134,7 +171,7 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
           .
         </AlertDescription>
       </Alert>
-      <TypographyH3>{flowName}</TypographyH3>
+      <TypographyH3>Verify (DC API)</TypographyH3>
       <form className="space-y-8 mt-4" onSubmit={disabled ? undefined : onSubmitCreateRequest}>
         <div className="flex flex-col">
           <div className="flex flex-col items-start gap-2">
@@ -179,7 +216,7 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
+        {/* <div className="space-y-2">
           <Label htmlFor="request-signer-type">Request Signer Type</Label>
 
           <RadioGroup
@@ -187,29 +224,21 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
             required
             value={requestSignerType}
             onValueChange={(value) => setRequestSignerType(value as RequestSignerType)}
-            defaultValue="x5c"
+            defaultValue="none"
           >
-            <MiniRadioItem key="x5c" value="x5c" label="x509 Certificate" />
-            <MiniRadioItem key="openid-federation" value="openid-federation" label="OpenID Federation" />
+            <MiniRadioItem key="none" value="none" label="None" />
+            <MiniRadioItem disabled key="x5c" value="x5c" label="x509 Certificate" />
+            <MiniRadioItem disabled key="openid-federation" value="openid-federation" label="OpenID Federation" />
           </RadioGroup>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="request-scheme">Scheme</Label>
-          <Input
-            name="request-scheme"
-            required
-            value={requestScheme}
-            onChange={({ target }) => setRequestScheme(target.value)}
-          />
-        </div>
+        </div> */}
         <div className="flex flex-col gap-2">
           <Label htmlFor="response-mode">Use Response Encryption</Label>
           <Switch
             id="response-mode"
             name="response-mode"
             required
-            checked={responseMode === 'direct_post.jwt'}
-            onCheckedChange={(checked) => setResponseMode(checked ? 'direct_post.jwt' : 'direct_post')}
+            checked={responseMode === 'dc_api.jwt'}
+            onCheckedChange={(checked) => setResponseMode(checked ? 'dc_api.jwt' : 'dc_api')}
           />
         </div>
         <div className="space-y-2">
@@ -217,76 +246,6 @@ export const VerifyBlock: React.FC<VerifyBlockProps> = ({ createRequest, flowNam
           <span className="text-xs"> - Optional. Each request has an associated default purpose</span>
           <Input name="request-purpose" required value={purpose} onChange={({ target }) => setPurpose(target.value)} />
         </div>
-        {/* <div className="space-y-2">
-          <Label htmlFor="response-mode">Response Mode</Label>
-
-          <Select
-            name="response-mode"
-            required
-            value={responseMode}
-            onValueChange={(value) => setResponseMode(value as ResponseMode)}
-          >
-            <SelectTrigger className="w-1/2">
-              <SelectValue placeholder="Select a credential type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem key="direct_post.jwt" value="direct_post.jwt">
-                  <pre>direct_post.jwt - Response Encryption</pre>
-                </SelectItem>
-                <SelectItem key="direct_post" value="direct_post">
-                  <pre>direct_post</pre>
-                </SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div> */}
-        {!hasResponse && (
-          <div className="flex justify-center flex-col items-center bg-gray-200 min-h-64 w-full rounded-md">
-            {authorizationRequestUriHasBeenFetched ? (
-              <p className="text-gray-500 break-all">
-                Authorization request has been retrieved. Waiting for response...
-              </p>
-            ) : authorizationRequestUri ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <div className="flex flex-col p-5 gap-2 justify-center items-center gap-6">
-                    <div className="bg-white p-5 rounded-md w-[296px]">
-                      <QRCode size={256} value={authorizationRequestUri} />
-                    </div>
-                    <TooltipTrigger asChild>
-                      {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
-                      <p
-                        onClick={(e) => navigator.clipboard.writeText(e.currentTarget.innerText)}
-                        className="text-gray-500 break-all cursor-pointer"
-                      >
-                        {authorizationRequestUri}
-                      </p>
-                    </TooltipTrigger>
-                    <div className="gap-2 w-full justify-center flex flex-1">
-                      <div>
-                        <Link href={authorizationRequestUri}>
-                          <Button>Open in Wallet</Button>
-                        </Link>
-                      </div>
-                    </div>
-                    <div>
-                      <Link href={authorizationRequestUri.replace('openid4vp://', 'id.animo.ausweis:')}>
-                        <Button>Open in EasyPID Wallet</Button>
-                      </Link>
-                    </div>
-                  </div>
-
-                  <TooltipContent>
-                    <p>Click to copy</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : (
-              <p className="text-gray-500 break-all">Authorization request will be displayed here</p>
-            )}
-          </div>
-        )}
         <Button disabled={disabled} onClick={onSubmitCreateRequest} className="w-full" onSubmit={onSubmitCreateRequest}>
           Verify Credential
         </Button>
