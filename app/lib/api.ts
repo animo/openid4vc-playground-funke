@@ -115,6 +115,7 @@ export async function createRequest(data: {
   purpose?: string
   transactionAuthorizationType: 'none' | 'qes'
   version: 'v1.draft21' | 'v1.draft24'
+  queryLanguage: 'pex' | 'dcql'
 }) {
   const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/requests/create`, {
     method: 'POST',

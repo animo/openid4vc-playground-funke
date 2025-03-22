@@ -26,8 +26,9 @@ import { getIssuerIdForCredentialConfigurationId } from './issuer'
 import { issuers } from './issuers'
 import { getX509DcsCertificate, getX509RootCertificate } from './keyMethods'
 import { oidcUrl } from './oidcProvider/provider'
-import { getVerifier } from './verifier'
+import { type PlaygroundVerifierOptions, getVerifier } from './verifier'
 import { allDefinitions, verifiers } from './verifiers'
+import { dcqlQueryFromRequest, presentationDefinitionFromRequest } from './verifiers/util'
 
 const zCreateOfferRequest = z.object({
   credentialSupportedIds: z.array(z.string()),
@@ -140,22 +141,13 @@ apiRouter.get('/issuers', async (_, response: Response) => {
 
 apiRouter.get('/verifier', async (_, response: Response) => {
   return response.json({
-    presentationRequests: verifiers.flatMap((verifier) => [
-      ...verifier.presentationRequests.map((c) => {
-        return {
-          useCase: 'useCase' in verifier ? verifier.useCase : undefined,
-          display: `${c.name} - DIF PEX`,
-          id: c.id,
-        }
-      }),
-      ...verifier.dcqlRequests.map((c) => {
-        return {
-          useCase: 'useCase' in verifier ? verifier.useCase : undefined,
-          display: `${c.name} - DCQL`,
-          id: c.id,
-        }
-      }),
-    ]),
+    presentationRequests: verifiers.flatMap((verifier) =>
+      verifier.requests.map((c, index) => ({
+        useCase: 'useCase' in verifier ? verifier.useCase : undefined,
+        display: c.name,
+        id: `${verifier.verifierId}__${index}`,
+      }))
+    ),
   })
 })
 
@@ -192,13 +184,7 @@ const zCreatePresentationRequestBody = z.object({
   purpose: z.string().optional(),
   transactionAuthorizationType: z.enum(['none', 'qes']),
   version: z.enum(['v1.draft21', 'v1.draft24']).default('v1.draft24'),
-})
-
-const zCreatePresentationRequestDcBody = z.object({
-  requestSignerType: z.enum(['none', 'x5c']),
-  presentationDefinitionId: z.string(),
-  responseMode: z.enum(['dc_api', 'dc_api.jwt']),
-  purpose: z.string().optional(),
+  queryLanguage: z.enum(['pex', 'dcql']).default('dcql'),
 })
 
 const zReceiveDcResponseBody = z.object({
@@ -216,35 +202,28 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
       responseMode,
       version,
       purpose,
+      queryLanguage,
     } = await zCreatePresentationRequestBody.parseAsync(request.body)
 
     const x509RootCertificate = getX509RootCertificate()
     const x509DcsCertificate = getX509DcsCertificate()
 
-    const definitionId = presentationDefinitionId
-    const definition = allDefinitions.find((d) => d.id === definitionId)
+    const [verifierId, requestIndex] = presentationDefinitionId.split('__')
+    const verifier = await getVerifier(verifierId)
+
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    const definition = (verifiers.find((v) => v.verifierId === verifierId)?.requests as any)[
+      requestIndex
+    ] as PlaygroundVerifierOptions['requests'][number]
     if (!definition) {
       return response.status(404).json({
         error: 'Definition not found',
       })
     }
 
-    const verifierId = verifiers.find(
-      (a) =>
-        a.presentationRequests.find((r) => r.id === definition.id) ?? a.dcqlRequests.find((r) => r.id === definition.id)
-    )?.verifierId
-    if (!verifierId) {
-      return response.status(404).json({
-        error: 'Verifier not found',
-      })
-    }
-    const verifier = await getVerifier(verifierId)
     console.log('Requesting definition', JSON.stringify(definition, null, 2))
 
-    const credentialIds =
-      'credentials' in definition
-        ? definition.credentials.map((c) => c.id)
-        : definition.input_descriptors.map((i) => i.id)
+    const credentialIds = definition.credentials.map((_, index) => `${index}`)
 
     const { authorizationRequest, verificationSession, authorizationRequestObject } =
       await agent.modules.openId4VcVerifier.createAuthorizationRequest({
@@ -259,15 +238,7 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
         // : {
         //     method: 'openid-federation',
         //   }
-        presentationExchange:
-          'input_descriptors' in definition
-            ? {
-                definition: {
-                  ...definition,
-                  purpose: purpose ?? definition.purpose,
-                },
-              }
-            : undefined,
+
         transactionData:
           transactionAuthorizationType === 'qes'
             ? [
@@ -286,16 +257,16 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
                 },
               ]
             : undefined,
-        dcql:
-          'credentials' in definition
+        presentationExchange:
+          queryLanguage === 'pex'
             ? {
-                query: {
-                  ...definition,
-                  credential_sets:
-                    purpose && definition.credential_sets
-                      ? definition.credential_sets.map((set) => ({ ...set, purpose }))
-                      : definition.credential_sets,
-                },
+                definition: presentationDefinitionFromRequest(definition, purpose),
+              }
+            : undefined,
+        dcql:
+          queryLanguage === 'dcql'
+            ? {
+                query: dcqlQueryFromRequest(definition, purpose),
               }
             : undefined,
         responseMode,
@@ -485,25 +456,4 @@ apiRouter.use((error: Error, _request: Request, response: Response, _next: NextF
   return response.status(500).json({
     error: error.message,
   })
-})
-
-apiRouter.post('/validate-verification-request', async (request: Request, response: Response) => {
-  try {
-    const validateVerificationRequestBody = zValidateVerificationRequestSchema.parse(request.body)
-    const result = await validateVerificationRequest(validateVerificationRequestBody)
-    return response.json(result)
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return response.status(400).json({
-        error: 'Invalid request body',
-        details: error.errors,
-      })
-    }
-
-    console.error('Error validating verification request:', error)
-    return response.status(500).json({
-      error: 'Internal server error during verification validation',
-      message: error instanceof Error ? error.message : 'Unknown error',
-    })
-  }
 })

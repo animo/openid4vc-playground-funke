@@ -69,6 +69,7 @@ export const VerifyBlock: React.FC = () => {
   const [selectedUseCase, setSelectedUseCase] = useState<string>()
   const [requestError, setRequestError] = useState<string>()
   const [requestVersion, setRequestVersion] = useState<'v1.draft21' | 'v1.draft24'>('v1.draft24')
+  const [queryLanguage, setQueryLanguage] = useState<'dcql' | 'pex'>('dcql')
 
   useEffect(() => {
     getVerifier().then((v: NonNullable<typeof verifier>) => {
@@ -171,6 +172,7 @@ export const VerifyBlock: React.FC = () => {
         requestSignerType,
         transactionAuthorizationType,
         version: requestVersion,
+        queryLanguage,
       })
       if (responseMode.includes('direct_post')) {
         setAuthorizationRequestUri(request.authorizationRequestUri)
@@ -267,6 +269,7 @@ export const VerifyBlock: React.FC = () => {
                 setResponseMode((r) => r.replace('dc_api', 'direct_post') as ResponseMode)
                 setRequestSignerType((r) => (r === 'none' ? 'x5c' : r))
                 setTransactionAuthorizationType('none')
+                setQueryLanguage('pex')
               }
             }}
           >
@@ -294,6 +297,19 @@ export const VerifyBlock: React.FC = () => {
             {requestVersion === 'v1.draft24' && (
               <MiniRadioItem key="dcApi" value="dcApi" label="Digital Credentials API" />
             )}
+          </RadioGroup>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="query-language">Query Language</Label>
+
+          <RadioGroup
+            name="query-language"
+            required
+            onValueChange={(value) => setQueryLanguage(value as 'pex' | 'dcql')}
+            value={queryLanguage}
+          >
+            <MiniRadioItem key="pex" value="pex" label="DIF Presentation Exchange" />
+            {requestVersion === 'v1.draft24' && <MiniRadioItem key="dcql" value="dcql" label="DCQL" />}
           </RadioGroup>
         </div>
         {responseMode.includes('direct_post') && (
