@@ -37,16 +37,6 @@ export async function getVerifier() {
   return response.json()
 }
 
-export async function getVerifierDc() {
-  const response = await fetch(`${NEXT_PUBLIC_API_URL}/api/verifier-dc`)
-
-  if (!response.ok) {
-    throw new Error('Failed to get verifier')
-  }
-
-  return response.json()
-}
-
 export type Issuers = Array<{
   id: string
   name: string

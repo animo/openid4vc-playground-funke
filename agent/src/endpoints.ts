@@ -159,23 +159,6 @@ apiRouter.get('/verifier', async (_, response: Response) => {
   })
 })
 
-apiRouter.get('/verifier-dc', async (_, response: Response) => {
-  return response.json({
-    presentationRequests: verifiers
-      .flatMap((verifier) =>
-        verifier.dcqlRequests.map((c) => {
-          if (c.credentials.length > 1) return undefined
-          return {
-            useCase: 'useCase' in verifier ? verifier.useCase : undefined,
-            display: c.name,
-            id: c.id,
-          }
-        })
-      )
-      .filter((i) => i !== undefined),
-  })
-})
-
 // apiRouter.post('/trust-chains', async (request: Request, response: Response) => {
 //   const parseResult = await z
 //     .object({

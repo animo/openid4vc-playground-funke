@@ -1,9 +1,8 @@
 name: Continuous Deployment
 
 on:
-  push:
-    branches:
-      - dc-api
+  workflow_dispatch:
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -13,6 +12,7 @@ env:
 jobs:
   build-and-push-image-agent:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - run: AGENT_HOST=https://dc-api.animo.id pnpm build
+      - run: AGENT_HOST=https://funke.animo.id pnpm build
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
@@ -55,6 +55,7 @@ jobs:
 
   build-and-push-image-app:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -72,7 +73,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - run: NEXT_PUBLIC_API_URL=https://dc-api.animo.id pnpm build
+      - run: NEXT_PUBLIC_API_URL=https://funke.animo.id pnpm build
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
