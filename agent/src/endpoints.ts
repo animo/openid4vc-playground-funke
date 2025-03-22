@@ -13,9 +13,9 @@ import {
   X509ModuleConfig,
 } from '@credo-ts/core'
 import {
-  OpenId4VpVerifierService,
   type OpenId4VcVerificationSessionRecord,
   OpenId4VcVerificationSessionState,
+  OpenId4VpVerifierService,
 } from '@credo-ts/openid4vc'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import z from 'zod'

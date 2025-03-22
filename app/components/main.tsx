@@ -4,9 +4,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { GitHubLogoIcon } from '@radix-ui/react-icons'
 import Image from 'next/image'
 
-import { X509Tab } from './X509Tab'
-import { VerifyBlock } from './VerifyBlock'
 import { IssueTab } from './IssueTab'
+import { VerifyBlock } from './VerifyBlock'
+import { X509Tab } from './X509Tab'
 
 export function Main() {
   return (
