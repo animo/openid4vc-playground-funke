@@ -7,6 +7,7 @@ import {
   mdocInputDescriptor,
   pidMdocDcqlCredential,
   pidMdocInputDescriptor,
+  pidSdJwtDcqlCredential,
   sdJwtDcqlCredential,
   sdJwtInputDescriptor,
 } from './util'
@@ -242,6 +243,22 @@ export const bundesregierungVerifier = {
             'issuing_country',
             'issuing_authority',
           ],
+        }),
+      ],
+    },
+    {
+      id: 'ced46fcd-5dc8-4d55-aefa-608992184c54',
+      name: 'BDR PID (sd-jwt vc) - Names',
+      credential_sets: [
+        {
+          options: [['6ee0d1b9-5c16-499e-9f8b-744767a023dd']],
+          purpose: 'Please sign this document',
+        },
+      ],
+      credentials: [
+        pidSdJwtDcqlCredential({
+          id: 'c5eaf32f-b51c-41df-b649-f183a08e7ca5',
+          fields: ['family_name', 'given_name'],
         }),
       ],
     },

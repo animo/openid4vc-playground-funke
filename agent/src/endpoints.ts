@@ -1,6 +1,7 @@
 import {
   DateOnly,
   DifPresentationExchangeService,
+  JsonEncoder,
   JsonTransformer,
   Jwt,
   MdocDeviceResponse,
@@ -12,7 +13,7 @@ import {
   X509ModuleConfig,
 } from '@credo-ts/core'
 import {
-  OpenId4VcSiopVerifierService,
+  OpenId4VpVerifierService,
   type OpenId4VcVerificationSessionRecord,
   OpenId4VcVerificationSessionState,
 } from '@credo-ts/openid4vc'
@@ -201,11 +202,13 @@ apiRouter.get('/verifier-dc', async (_, response: Response) => {
 // })
 
 const zCreatePresentationRequestBody = z.object({
-  requestSignerType: z.enum(['x5c', 'openid-federation']),
+  requestSignerType: z.enum(['none', 'x5c', 'openid-federation']),
   presentationDefinitionId: z.string(),
   requestScheme: z.string(),
-  responseMode: z.enum(['direct_post.jwt', 'direct_post']),
+  responseMode: z.enum(['direct_post.jwt', 'direct_post', 'dc_api', 'dc_api.jwt']),
   purpose: z.string().optional(),
+  transactionAuthorizationType: z.enum(['none', 'qes']),
+  version: z.enum(['v1.draft21', 'v1.draft24']).default('v1.draft24'),
 })
 
 const zCreatePresentationRequestDcBody = z.object({
@@ -221,166 +224,133 @@ const zReceiveDcResponseBody = z.object({
 })
 
 apiRouter.post('/requests/create', async (request: Request, response: Response) => {
-  const { requestSignerType, presentationDefinitionId, requestScheme, responseMode, purpose } =
-    await zCreatePresentationRequestBody.parseAsync(request.body)
-
-  const x509RootCertificate = getX509RootCertificate()
-  const x509DcsCertificate = getX509DcsCertificate()
-
-  const definitionId = presentationDefinitionId
-  const definition = allDefinitions.find((d) => d.id === definitionId)
-  if (!definition) {
-    return response.status(404).json({
-      error: 'Definition not found',
-    })
-  }
-
-  const verifierId = verifiers.find(
-    (a) =>
-      a.presentationRequests.find((r) => r.id === definition.id) ?? a.dcqlRequests.find((r) => r.id === definition.id)
-  )?.verifierId
-  if (!verifierId) {
-    return response.status(404).json({
-      error: 'Verifier not found',
-    })
-  }
-  const verifier = await getVerifier(verifierId)
-  console.log('Requesting definition', JSON.stringify(definition, null, 2))
-
-  const { authorizationRequest, verificationSession } =
-    await agent.modules.openId4VcVerifier.createAuthorizationRequest({
-      verifierId: verifier.verifierId,
-      requestSigner:
-        // requestSignerType === 'x5c'
-        /* ? */ {
-          method: 'x5c',
-          x5c: [x509DcsCertificate, x509RootCertificate],
-        },
-      // : {
-      //     method: 'openid-federation',
-      //   }
-      presentationExchange:
-        'input_descriptors' in definition
-          ? {
-              definition: {
-                ...definition,
-                purpose: purpose ?? definition.purpose,
-              },
-            }
-          : undefined,
-      dcql:
-        'credentials' in definition
-          ? {
-              query: {
-                ...definition,
-                credential_sets:
-                  purpose && definition.credential_sets
-                    ? definition.credential_sets.map((set) => ({ ...set, purpose }))
-                    : definition.credential_sets,
-              },
-            }
-          : undefined,
+  try {
+    const {
+      requestSignerType,
+      transactionAuthorizationType,
+      presentationDefinitionId,
+      requestScheme,
       responseMode,
+      version,
+      purpose,
+    } = await zCreatePresentationRequestBody.parseAsync(request.body)
+
+    const x509RootCertificate = getX509RootCertificate()
+    const x509DcsCertificate = getX509DcsCertificate()
+
+    const definitionId = presentationDefinitionId
+    const definition = allDefinitions.find((d) => d.id === definitionId)
+    if (!definition) {
+      return response.status(404).json({
+        error: 'Definition not found',
+      })
+    }
+
+    const verifierId = verifiers.find(
+      (a) =>
+        a.presentationRequests.find((r) => r.id === definition.id) ?? a.dcqlRequests.find((r) => r.id === definition.id)
+    )?.verifierId
+    if (!verifierId) {
+      return response.status(404).json({
+        error: 'Verifier not found',
+      })
+    }
+    const verifier = await getVerifier(verifierId)
+    console.log('Requesting definition', JSON.stringify(definition, null, 2))
+
+    const credentialIds =
+      'credentials' in definition
+        ? definition.credentials.map((c) => c.id)
+        : definition.input_descriptors.map((i) => i.id)
+
+    const { authorizationRequest, verificationSession, authorizationRequestObject } =
+      await agent.modules.openId4VcVerifier.createAuthorizationRequest({
+        verifierId: verifier.verifierId,
+        requestSigner:
+          requestSignerType === 'none'
+            ? { method: 'none' }
+            : {
+                method: 'x5c',
+                x5c: [x509DcsCertificate, x509RootCertificate],
+              },
+        // : {
+        //     method: 'openid-federation',
+        //   }
+        presentationExchange:
+          'input_descriptors' in definition
+            ? {
+                definition: {
+                  ...definition,
+                  purpose: purpose ?? definition.purpose,
+                },
+              }
+            : undefined,
+        transactionData:
+          transactionAuthorizationType === 'qes'
+            ? [
+                {
+                  credential_ids: credentialIds as [string, ...string[]],
+                  type: 'qes_authorization',
+                  transaction_data_hashes_alg: ['sha-256'],
+                  signatureQualifier: 'eu_eidas_qes',
+                  documentDigests: [
+                    {
+                      hash: 'some-hash',
+                      label: 'Declaration of Independence.pdf',
+                      hashAlgorithmOID: 'something',
+                    },
+                  ],
+                },
+              ]
+            : undefined,
+        dcql:
+          'credentials' in definition
+            ? {
+                query: {
+                  ...definition,
+                  credential_sets:
+                    purpose && definition.credential_sets
+                      ? definition.credential_sets.map((set) => ({ ...set, purpose }))
+                      : definition.credential_sets,
+                },
+              }
+            : undefined,
+        responseMode,
+        version,
+        expectedOrigins:
+          requestSignerType !== 'none' && responseMode.includes('dc_api')
+            ? [request.headers.origin as string]
+            : undefined,
+      })
+
+    const authorizationRequestJwt = verificationSession.authorizationRequestJwt
+      ? Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt)
+      : undefined
+    const authorizationRequestPayload = verificationSession.requestPayload
+    const dcqlQuery = authorizationRequestPayload.dcql_query
+    const presentationDefinition = authorizationRequestPayload.presentation_definition
+    const transactionData = authorizationRequestPayload.transaction_data?.map((e) => JsonEncoder.fromBase64(e))
+
+    return response.json({
+      authorizationRequestObject,
+      authorizationRequestUri: authorizationRequest.replace('openid4vp://', requestScheme),
+      verificationSessionId: verificationSession.id,
+      responseStatus: verificationSession.state,
+      dcqlQuery,
+      definition: presentationDefinition,
+      transactionData,
+      authorizationRequest: authorizationRequestJwt
+        ? {
+            payload: authorizationRequestJwt.payload.toJson(),
+            header: authorizationRequestJwt.header,
+          }
+        : authorizationRequestPayload,
     })
-
-  console.log(authorizationRequest)
-
-  const authorizationRequestJwt = Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt as string)
-  const dcqlQuery = authorizationRequestJwt.payload.additionalClaims.dcql_query
-  const presentationDefinition = authorizationRequestJwt.payload.additionalClaims.presentation_definition
-
-  return response.json({
-    authorizationRequestUri: authorizationRequest.replace('openid4vp://', requestScheme),
-    verificationSessionId: verificationSession.id,
-    responseStatus: verificationSession.state,
-    dcqlQuery: dcqlQuery ? JSON.parse(dcqlQuery as string) : undefined,
-    definition: presentationDefinition,
-    authorizationRequest: {
-      payload: authorizationRequestJwt.payload.toJson(),
-      header: authorizationRequestJwt.header,
-    },
-  })
-})
-
-apiRouter.post('/requests/create-dc', async (request: Request, response: Response) => {
-  const { presentationDefinitionId, responseMode, purpose, requestSignerType } =
-    await zCreatePresentationRequestDcBody.parseAsync(request.body)
-  const x509RootCertificate = getX509RootCertificate()
-  const x509DcsCertificate = getX509DcsCertificate()
-
-  const definitionId = presentationDefinitionId
-  const definition = allDefinitions.find((d) => d.id === definitionId)
-  if (!definition) {
-    return response.status(404).json({
-      error: 'Definition not found',
+  } catch (error) {
+    return response.status(400).json({
+      message: error instanceof Error ? error.message : 'Unknown error occurred',
     })
   }
-
-  const verifierId = verifiers.find(
-    (a) =>
-      a.presentationRequests.find((r) => r.id === definition.id) ?? a.dcqlRequests.find((r) => r.id === definition.id)
-  )?.verifierId
-  if (!verifierId) {
-    return response.status(404).json({
-      error: 'Verifier not found',
-    })
-  }
-  const verifier = await getVerifier(verifierId)
-  console.log('Requesting definition', JSON.stringify(definition, null, 2))
-
-  const { authorizationRequest, verificationSession, authorizationRequestObject } =
-    await agent.modules.openId4VcVerifier.createAuthorizationRequest({
-      verifierId: verifier.verifierId,
-      requestSigner:
-        requestSignerType === 'none'
-          ? { method: 'none' }
-          : { method: 'x5c', x5c: [x509DcsCertificate, x509RootCertificate] },
-      presentationExchange:
-        'input_descriptors' in definition
-          ? {
-              definition: {
-                ...definition,
-                purpose: purpose ?? definition.purpose,
-              },
-            }
-          : undefined,
-      dcql:
-        'credentials' in definition
-          ? {
-              query: {
-                ...definition,
-                credential_sets:
-                  purpose && definition.credential_sets
-                    ? definition.credential_sets.map((set) => ({ ...set, purpose }))
-                    : definition.credential_sets,
-              },
-            }
-          : undefined,
-      responseMode,
-      expectedOrigins: requestSignerType === 'none' ? undefined : [request.headers.origin as string],
-    })
-
-  console.log(authorizationRequest)
-
-  const authorizationRequestJwt = verificationSession.authorizationRequestJwt
-    ? Jwt.fromSerializedJwt(verificationSession.authorizationRequestJwt)
-    : undefined
-  const authorizationRequestPayload = verificationSession.requestPayload
-  const dcqlQuery = authorizationRequestPayload.dcql_query
-  const presentationDefinition = authorizationRequestPayload.presentation_definition
-
-  return response.json({
-    authorizationRequestUri: authorizationRequest,
-    verificationSessionId: verificationSession.id,
-    responseStatus: verificationSession.state,
-    dcqlQuery,
-    definition: presentationDefinition,
-    authorizationRequestObject,
-    authorizationRequest: {
-      payload: verificationSession.requestPayload,
-      header: authorizationRequestJwt?.header,
-    },
-  })
 })
 
 async function getVerificationStatus(verificationSession: OpenId4VcVerificationSessionRecord) {
@@ -396,13 +366,15 @@ async function getVerificationStatus(verificationSession: OpenId4VcVerificationS
   const dcqlQuery = authorizationRequestPayload.dcql_query
   const presentationDefinition = authorizationRequestPayload.presentation_definition
 
+  const transactionData = authorizationRequestPayload.transaction_data?.map((e) => JsonEncoder.fromBase64(e))
+
   if (verificationSession.state === OpenId4VcVerificationSessionState.ResponseVerified) {
     const verified = await agent.modules.openId4VcVerifier.getVerifiedAuthorizationResponse(verificationSession.id)
     console.log(verified.presentationExchange?.presentations)
     console.log(verified.dcql?.presentationResult)
 
     const presentations = await Promise.all(
-      (verified.presentationExchange?.presentations ?? Object.values(verified.dcql?.presentation ?? {})).map(
+      (verified.presentationExchange?.presentations ?? Object.values(verified.dcql?.presentations ?? {})).map(
         async (presentation) => {
           if (presentation instanceof W3cJsonLdVerifiablePresentation) {
             return {
@@ -455,7 +427,7 @@ async function getVerificationStatus(verificationSession: OpenId4VcVerificationS
     )
 
     const dcqlSubmission = verified.dcql
-      ? Object.keys(verified.dcql.presentation).map((key, index) => ({
+      ? Object.keys(verified.dcql.presentations).map((key, index) => ({
           queryCredentialId: key,
           presentationIndex: index,
         }))
@@ -473,6 +445,7 @@ async function getVerificationStatus(verificationSession: OpenId4VcVerificationS
 
       submission: verified.presentationExchange?.submission,
       definition: verified.presentationExchange?.definition,
+      transactionDataSubmission: verified.transactionData,
 
       dcqlQuery,
       dcqlSubmission: verified.dcql
@@ -487,6 +460,7 @@ async function getVerificationStatus(verificationSession: OpenId4VcVerificationS
     error: verificationSession.errorMessage,
     authorizationRequest,
     definition: presentationDefinition,
+    transactionData,
     dcqlQuery,
   }
 }

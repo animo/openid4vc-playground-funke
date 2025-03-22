@@ -1,10 +1,10 @@
 import type { DcqlQuery, DifPresentationExchangeDefinitionV2 } from '@credo-ts/core'
-import type { OpenId4VcSiopCreateVerifierOptions } from '@credo-ts/openid4vc'
+import type { OpenId4VpCreateVerifierOptions } from '@credo-ts/openid4vc'
 import { agent } from './agent'
 
 export interface PlaygroundVerifierOptions {
   verifierId: string
-  clientMetadata?: OpenId4VcSiopCreateVerifierOptions['clientMetadata']
+  clientMetadata?: OpenId4VpCreateVerifierOptions['clientMetadata']
   presentationRequests: Array<DifPresentationExchangeDefinitionV2>
   dcqlRequests: Array<DcqlQuery & { id: string; name: string }>
   useCase?: {

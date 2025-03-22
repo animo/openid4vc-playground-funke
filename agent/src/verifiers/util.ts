@@ -52,6 +52,7 @@ export function sdJwtInputDescriptor({
         'sd-jwt_alg_values': ['ES256'],
         'kb-jwt_alg_values': ['ES256'],
       },
+      // https://github.com/Sphereon-Opensource/pex-openapi/pull/39
       // 'dc+sd-jwt': {
       //   'sd-jwt_alg_values': ['ES256'],
       //   'kb-jwt_alg_values': ['ES256'],

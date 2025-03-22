@@ -239,9 +239,9 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
     )
 
     // We allow receiving the PID in both SD-JWT and mdoc when issuing in sd-jwt or mdoc format
-    if (descriptor?.format === ClaimFormat.SdJwtVc || descriptor?.format === ClaimFormat.MsoMdoc) {
+    if (descriptor?.claimFormat === ClaimFormat.SdJwtVc || descriptor?.claimFormat === ClaimFormat.MsoMdoc) {
       const driversLicenseClaims =
-        descriptor.format === ClaimFormat.SdJwtVc
+        descriptor.claimFormat === ClaimFormat.SdJwtVc
           ? {
               given_name: descriptor.credential.prettyClaims.given_name,
               family_name: descriptor.credential.prettyClaims.family_name,
@@ -269,7 +269,7 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
             }
 
       const taxIdClaims =
-        descriptor.format === ClaimFormat.SdJwtVc
+        descriptor.claimFormat === ClaimFormat.SdJwtVc
           ? {
               registered_given_name: descriptor.credential.prettyClaims.given_name,
               registered_family_name: descriptor.credential.prettyClaims.family_name,
@@ -291,7 +291,7 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
             }
 
       const certificateOfResidenceClaims =
-        descriptor.format === ClaimFormat.SdJwtVc
+        descriptor.claimFormat === ClaimFormat.SdJwtVc
           ? {
               family_name: descriptor.credential.prettyClaims.family_name,
               given_name: descriptor.credential.prettyClaims.given_name,
@@ -311,10 +311,10 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
               issuing_country: descriptor.credential.issuerSignedNamespaces['eu.europa.ec.eudi.pid.1'].issuing_country,
             }
 
-      const healthIdClaims = descriptor.format === ClaimFormat.SdJwtVc ? {} : {}
+      const healthIdClaims = descriptor.claimFormat === ClaimFormat.SdJwtVc ? {} : {}
 
       const msisdnClaimsData =
-        descriptor.format === ClaimFormat.SdJwtVc
+        descriptor.claimFormat === ClaimFormat.SdJwtVc
           ? {
               registered_given_name: descriptor.credential.prettyClaims.given_name,
               registered_family_name: descriptor.credential.prettyClaims.family_name,
@@ -326,7 +326,7 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
             }
 
       const arfCompliantPidData =
-        descriptor.format === ClaimFormat.SdJwtVc
+        descriptor.claimFormat === ClaimFormat.SdJwtVc
           ? {
               family_name: descriptor.credential.prettyClaims.family_name,
               given_name: descriptor.credential.prettyClaims.given_name,
@@ -360,7 +360,7 @@ export const credentialRequestToCredentialMapper: OpenId4VciCredentialRequestToC
           : {}
 
       const nederlandenPidData =
-        descriptor.format === ClaimFormat.SdJwtVc
+        descriptor.claimFormat === ClaimFormat.SdJwtVc
           ? {
               family_name: descriptor.credential.prettyClaims.family_name,
               given_name: descriptor.credential.prettyClaims.given_name,

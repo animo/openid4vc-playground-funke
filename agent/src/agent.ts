@@ -74,6 +74,9 @@ export const agent = new Agent({
       // },
     }),
     x509: new X509Module({
+      getTrustedCertificatesForVerification: (agentContext, { certificateChain }) => {
+        return [certificateChain[certificateChain.length - 1].toString('pem')]
+      },
       trustedCertificates: [
         x509PidIssuerCertificate,
         x509BdrMdlIssuerCertificate,
