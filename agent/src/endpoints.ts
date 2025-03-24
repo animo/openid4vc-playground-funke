@@ -231,13 +231,14 @@ apiRouter.post('/requests/create', async (request: Request, response: Response) 
         requestSigner:
           requestSignerType === 'none'
             ? { method: 'none' }
-            : {
-                method: 'x5c',
-                x5c: [x509DcsCertificate, x509RootCertificate],
-              },
-        // : {
-        //     method: 'openid-federation',
-        //   }
+            : requestSignerType === 'x5c'
+              ? {
+                  method: 'x5c',
+                  x5c: [x509DcsCertificate, x509RootCertificate],
+                }
+              : {
+                  method: 'federation',
+                },
 
         transactionData:
           transactionAuthorizationType === 'qes'
