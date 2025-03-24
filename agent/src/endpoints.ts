@@ -151,6 +151,31 @@ apiRouter.get('/verifier', async (_, response: Response) => {
   })
 })
 
+apiRouter.post('/trust-chains', async (request: Request, response: Response) => {
+  const parseResult = await z
+    .object({
+      entityId: z.string(),
+      trustAnchorEntityIds: z.array(z.string()).nonempty(),
+    })
+    .safeParseAsync(request.body)
+
+  if (!parseResult.success) {
+    return response.status(400).json({
+      error: parseResult.error.message,
+      details: parseResult.error.issues,
+    })
+  }
+
+  const { entityId, trustAnchorEntityIds } = parseResult.data
+
+  const chains = await agent.modules.openId4VcHolder.resolveOpenIdFederationChains({
+    entityId,
+    trustAnchorEntityIds,
+  })
+
+  return response.json(chains)
+})
+
 const zCreatePresentationRequestBody = z.object({
   requestSignerType: z.enum(['none', 'x5c', 'openid-federation']),
   presentationDefinitionId: z.string(),
