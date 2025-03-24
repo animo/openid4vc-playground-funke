@@ -62,16 +62,6 @@ export const agent = new Agent({
     openId4VcVerifier: new OpenId4VcVerifierModule({
       baseUrl: joinUriParts(AGENT_HOST, ['siop']),
       router: openId4VpRouter,
-      // federation: {
-      //   async getAuthorityHints(agentContext, { verifierId }) {
-      //     return getAuthorityHints(verifierTrustChains, verifierId).map((verifierId) =>
-      //       joinUriParts(AGENT_HOST, ['siop', verifierId])
-      //     )
-      //   },
-      //   async isSubordinateEntity(agentContext, options) {
-      //     return isSubordinateTo(verifierTrustChains, options.verifierId, options.subjectEntityId).length > 0
-      //   },
-      // },
     }),
     x509: new X509Module({
       getTrustedCertificatesForVerification: (agentContext, { certificateChain }) => {
