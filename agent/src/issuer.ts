@@ -191,15 +191,15 @@ export function serializableSignOptionsToSignOptions({
 
 export async function createOrUpdateIssuer(options: OpenId4VciCreateIssuerOptions & { issuerId: string }) {
   if (await doesIssuerExist(options.issuerId)) {
-    await agent.modules.oid4vc.issuer.updateIssuerMetadata(options)
+    await agent.openid4vc.issuer.updateIssuerMetadata(options)
   } else {
-    return agent.modules.oid4vc.issuer.createIssuer(options)
+    return agent.openid4vc.issuer.createIssuer(options)
   }
 }
 
 export async function doesIssuerExist(issuerId: string) {
   try {
-    await agent.modules.oid4vc.issuer.getIssuerByIssuerId(issuerId)
+    await agent.openid4vc.issuer.getIssuerByIssuerId(issuerId)
     return true
   } catch (error) {
     return false
@@ -207,7 +207,7 @@ export async function doesIssuerExist(issuerId: string) {
 }
 
 export async function getIssuer(issuerId: string) {
-  return agent.modules.oid4vc.issuer.getIssuerByIssuerId(issuerId)
+  return agent.openid4vc.issuer.getIssuerByIssuerId(issuerId)
 }
 
 export function getIssuerIdForCredentialConfigurationId(credentialConfigurationId: string) {

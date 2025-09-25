@@ -55,7 +55,7 @@ export const agent = new Agent({
         key: AGENT_WALLET_KEY,
       },
     }),
-    oid4vc: new OpenId4VcModule({
+    openid4vc: new OpenId4VcModule({
       issuer: {
         baseUrl: joinUriParts(AGENT_HOST, ['oid4vci']),
         router: openId4VciRouter,
